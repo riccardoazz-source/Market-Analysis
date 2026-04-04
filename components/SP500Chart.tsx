@@ -34,7 +34,7 @@ const CAPE_MODERN_AVG = 27.2   // post-1990 average
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
 function CustomTooltip({
-  active, payload, label, downturns, activeAssets, isNormalized, activeEco,
+  active, payload, label, downturns, activeAssets, isNormalized, activeEco, normalizeBaseLabel,
 }: {
   active?: boolean
   payload?: Array<{ dataKey: string; value: number; color: string }>
@@ -43,6 +43,7 @@ function CustomTooltip({
   activeAssets: Set<AssetKey>
   isNormalized: boolean
   activeEco: EcoIndicator | null
+  normalizeBaseLabel?: string
 }) {
   if (!active || !payload?.length || !label) return null
 
@@ -103,7 +104,9 @@ function CustomTooltip({
       })()}
 
       {isNormalized && (
-        <p className="text-slate-500 mt-1 text-[10px]">Base = 100 at chart start</p>
+        <p className="text-slate-500 mt-1 text-[10px]">
+          Base = 100 at {normalizeBaseLabel ?? 'first available date'}
+        </p>
       )}
 
       {activeDt && (
@@ -209,6 +212,7 @@ export default function SP500Chart({
   }, [isNormalized, activeAssets, chartData, defaultStartIndex])
 
   // ── Display data: normalize per-asset to common base ──────────────
+  // normalizeBase MUST be in deps — it changes when activeAssets changes in index mode
   const displayData = useMemo(() => {
     const base = normalizeBase ?? chartData[defaultStartIndex]
     return chartData.map((d) => {
@@ -218,14 +222,14 @@ export default function SP500Chart({
       }
       return {
         ...d,
-        sp500Norm: base.close > 0              ? (d.close          / base.close)  * 100 : null,
-        goldNorm:  (base.gold  ?? 0) > 0        ? ((d.gold  ?? 0)  / base.gold!)  * 100 : null,
-        bondsNorm: (base.bonds ?? 0) > 0        ? ((d.bonds ?? 0)  / base.bonds!) * 100 : null,
-        btcNorm:   (base.btc   ?? 0) > 0        ? ((d.btc   ?? 0)  / base.btc!)   * 100 : null,
+        sp500Norm: base.close > 0          ? (d.close          / base.close)  * 100 : null,
+        goldNorm:  (base.gold  ?? 0) > 0   ? ((d.gold  ?? 0)  / base.gold!)  * 100 : null,
+        bondsNorm: (base.bonds ?? 0) > 0   ? ((d.bonds ?? 0)  / base.bonds!) * 100 : null,
+        btcNorm:   (base.btc   ?? 0) > 0   ? ((d.btc   ?? 0)  / base.btc!)   * 100 : null,
         eco,
       }
     })
-  }, [chartData, defaultStartIndex, isNormalized, activeEco, ecoMap])
+  }, [chartData, defaultStartIndex, isNormalized, normalizeBase, activeEco, ecoMap])
 
   const filteredDownturns = useMemo(
     () => downturns.filter((d) => {
@@ -268,7 +272,14 @@ export default function SP500Chart({
     if (key === 'sp500') return
     setActiveAssets((prev) => {
       const next = new Set(prev)
-      next.has(key) ? next.delete(key) : next.add(key)
+      if (next.has(key)) {
+        next.delete(key)
+      } else {
+        next.add(key)
+        // BTC returns (100x–10,000x) dwarf all other assets in Index Mode on a linear scale.
+        // Auto-enable log scale so the comparison remains readable.
+        if (key === 'btc' && isNormalized) setLogScale(true)
+      }
       return next
     })
   }
@@ -373,6 +384,18 @@ export default function SP500Chart({
           </span>
         )}
       </div>
+
+      {/* BTC + Index Mode readability hint */}
+      {isNormalized && activeAssets.has('btc') && !logScale && (
+        <div className="flex items-center gap-2 mb-2 px-3 py-1.5 rounded-md bg-orange-900/30 border border-orange-700/40 text-xs text-orange-300">
+          <span>⚠</span>
+          <span>Bitcoin returns (100x–10,000x) are too large for a linear scale in Index Mode.{' '}
+            <button className="underline font-medium" onClick={() => setLogScale(true)}>
+              Enable Log Scale
+            </button>{' '}to see all assets.
+          </span>
+        </div>
+      )}
 
       {/* CAPE average legend */}
       {activeEco === 'pe_ratio' && (
@@ -494,6 +517,7 @@ export default function SP500Chart({
                 activeAssets={activeAssets}
                 isNormalized={isNormalized}
                 activeEco={activeEco}
+                normalizeBaseLabel={normalizeBaseLabel ?? undefined}
               />
             }
             isAnimationActive={false}
