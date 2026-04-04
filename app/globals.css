@@ -2,20 +2,110 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Theme variables ──────────────────────────────────────────────────────── */
+
+:root {
+  /* Light mode (default) */
+  --bg-page:      #f1f5f9;   /* slate-100 */
+  --bg-surface:   #ffffff;
+  --bg-surface-2: #f8fafc;   /* slate-50 */
+  --bg-muted:     #e2e8f0;   /* slate-200 */
+  --border:       #e2e8f0;   /* slate-200 */
+  --border-subtle:#f1f5f9;
+  --text-primary: #0f172a;   /* slate-900 */
+  --text-secondary:#475569;  /* slate-600 */
+  --text-muted:   #94a3b8;   /* slate-400 */
+}
+
+html.dark {
+  /* Dark mode */
+  --bg-page:      #020617;   /* slate-950 */
+  --bg-surface:   #1e293b;   /* slate-800 */
+  --bg-surface-2: #0f172a;   /* slate-900 */
+  --bg-muted:     #334155;   /* slate-700 */
+  --border:       #334155;   /* slate-700 */
+  --border-subtle:#1e293b;   /* slate-800 */
+  --text-primary: #f1f5f9;   /* slate-100 */
+  --text-secondary:#94a3b8;  /* slate-400 */
+  --text-muted:   #64748b;   /* slate-500 */
+}
+
+/* ─── Base styles ──────────────────────────────────────────────────────────── */
+
 @layer base {
   html {
     scroll-behavior: smooth;
   }
   body {
-    @apply bg-slate-950 text-slate-100;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    @apply font-sans antialiased;
   }
 }
 
+/* ─── Component tokens ─────────────────────────────────────────────────────── */
+
 @layer components {
   .card {
-    @apply bg-slate-800 rounded-xl border border-slate-700;
+    background-color: var(--bg-surface);
+    border: 1px solid var(--border);
+    @apply rounded-xl;
   }
   .badge {
     @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
   }
+  /* Theme-aware text helpers */
+  .text-theme-primary   { color: var(--text-primary); }
+  .text-theme-secondary { color: var(--text-secondary); }
+  .text-theme-muted     { color: var(--text-muted); }
+  .bg-theme-surface     { background-color: var(--bg-surface); }
+  .bg-theme-surface-2   { background-color: var(--bg-surface-2); }
+  .bg-theme-muted       { background-color: var(--bg-muted); }
+  .border-theme         { border-color: var(--border); }
 }
+
+/* ─── Light-mode overrides for dark-hardcoded elements ─────────────────────── */
+/* Charts and tooltips always stay dark regardless of theme */
+
+html:not(.dark) .recharts-wrapper,
+html:not(.dark) .recharts-surface,
+html:not(.dark) [class*="bg-slate-800"].card-chart-inner,
+html:not(.dark) .chart-dark-zone { /* intentionally left dark */ }
+
+/* Headings/body in light mode: ensure readable contrast */
+html:not(.dark) .text-white        { color: #0f172a !important; }
+html:not(.dark) .text-slate-100    { color: #0f172a !important; }
+html:not(.dark) .text-slate-200    { color: #1e293b !important; }
+html:not(.dark) .text-slate-300    { color: #334155 !important; }
+html:not(.dark) .text-slate-400    { color: #475569 !important; }
+html:not(.dark) .text-slate-500    { color: #64748b !important; }
+
+/* Dark backgrounds → light */
+html:not(.dark) .bg-slate-950      { background-color: #f1f5f9 !important; }
+html:not(.dark) .bg-slate-900      { background-color: #f8fafc !important; }
+html:not(.dark) .bg-slate-800      { background-color: #ffffff !important; }
+html:not(.dark) .bg-slate-700      { background-color: #e2e8f0 !important; }
+
+/* Borders */
+html:not(.dark) .border-slate-800  { border-color: #e2e8f0 !important; }
+html:not(.dark) .border-slate-700  { border-color: #e2e8f0 !important; }
+html:not(.dark) .divide-slate-700 > * + * { border-color: #e2e8f0 !important; }
+
+/* Hover states */
+html:not(.dark) .hover\:bg-slate-700:hover { background-color: #e2e8f0 !important; }
+html:not(.dark) .hover\:bg-slate-600:hover { background-color: #cbd5e1 !important; }
+
+/* Exception: charts always stay dark (they're inside card but have specific bg classes */
+html:not(.dark) .recharts-cartesian-grid line  { stroke: #334155; }
+
+/* Backdrop for sticky header */
+html:not(.dark) .bg-slate-900\/80   { background-color: rgba(248,250,252,0.9) !important; }
+html:not(.dark) .border-slate-800   { border-color: #e2e8f0 !important; }
+
+/* Accent buttons that use slate backgrounds */
+html:not(.dark) .bg-slate-600       { background-color: #64748b !important; }
+html:not(.dark) .bg-slate-600.text-white { color: #ffffff !important; }
+
+/* Category badge backgrounds - these should stay as is (they use colored backgrounds) */
+/* Stat card inner text in light mode */
+html:not(.dark) strong.text-slate-400 { color: #475569 !important; }

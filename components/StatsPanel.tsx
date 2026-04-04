@@ -26,26 +26,65 @@ function StatCard({ label, value, sub, accent = 'blue' }: StatCardProps) {
   }
   return (
     <div className="card p-4 flex flex-col gap-1">
-      <p className="text-xs text-slate-400 uppercase tracking-wide font-medium">{label}</p>
+      <p className="text-xs text-theme-muted uppercase tracking-wide font-medium">{label}</p>
       <p className={`text-2xl font-bold ${accentClasses[accent]}`}>{value}</p>
-      {sub && <p className="text-xs text-slate-500">{sub}</p>}
+      {sub && <p className="text-xs text-theme-muted">{sub}</p>}
+    </div>
+  )
+}
+
+function TypeStatRow({
+  label, count, avgDrawdown, avgDuration, avgRecovery, accent, icon,
+}: {
+  label: string
+  count: number
+  avgDrawdown: number
+  avgDuration: number
+  avgRecovery: number
+  accent: string
+  icon: string
+}) {
+  return (
+    <div className="card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-base">{icon}</span>
+        <p className={`text-sm font-bold ${accent}`}>{label}</p>
+        <span className="ml-auto text-xs text-theme-muted">{count} events</span>
+      </div>
+      <div className="grid grid-cols-3 gap-3 text-center">
+        <div>
+          <p className="text-xs text-theme-muted mb-0.5">Avg Drawdown</p>
+          <p className={`text-lg font-bold ${accent}`}>{formatPercent(avgDrawdown)}</p>
+        </div>
+        <div>
+          <p className="text-xs text-theme-muted mb-0.5">Avg Duration</p>
+          <p className="text-lg font-bold text-theme-primary">
+            {count > 0 ? daysToMonths(Math.round(avgDuration)) : 'N/A'}
+          </p>
+        </div>
+        <div>
+          <p className="text-xs text-theme-muted mb-0.5">Avg Recovery</p>
+          <p className="text-lg font-bold text-emerald-400">
+            {count > 0 && avgRecovery > 0 ? daysToMonths(Math.round(avgRecovery)) : 'N/A'}
+          </p>
+        </div>
+      </div>
     </div>
   )
 }
 
 function FrequencyBar({ label, years, color }: { label: string; years: number; color: string }) {
-  // Visual bar: max scale is 10 years
   const pct = Math.min((years / 10) * 100, 100)
   return (
     <div className="flex items-center gap-3">
-      <span className="text-xs text-slate-400 w-28 flex-shrink-0">{label}</span>
-      <div className="flex-1 bg-slate-700 rounded-full h-2 overflow-hidden">
+      <span className="text-xs text-theme-muted w-28 flex-shrink-0">{label}</span>
+      <div className="flex-1 bg-theme-muted rounded-full h-2 overflow-hidden opacity-40 relative">
         <div
-          className="h-full rounded-full transition-all"
-          style={{ width: `${pct}%`, backgroundColor: color }}
+          className="h-full rounded-full transition-all absolute inset-y-0 left-0"
+          style={{ width: `${pct}%`, backgroundColor: color, opacity: 1 }}
         />
       </div>
-      <span className="text-xs font-semibold text-white w-16 text-right flex-shrink-0">
+      <span className="text-xs font-semibold text-theme-primary w-16 text-right flex-shrink-0">
         every ~{years.toFixed(1)}y
       </span>
     </div>
@@ -58,41 +97,29 @@ export default function StatsPanel({ stats }: Props) {
 
   return (
     <div className="space-y-4">
-      {/* ── Primary stats ───────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
-        <StatCard
-          label="Avg. Drawdown"
-          value={formatPercent(stats.avgDrawdown)}
-          sub={`Median ${formatPercent(stats.medianDrawdown)}`}
-          accent="red"
+      {/* ── Bear Market vs Correction rows ──────────────────────────── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <TypeStatRow
+          label="Bear Markets (>20%)"
+          count={stats.bearMarkets}
+          avgDrawdown={stats.bearAvgDrawdown}
+          avgDuration={stats.bearAvgDuration}
+          avgRecovery={stats.bearAvgRecovery}
+          accent="text-red-400"
+          icon="🐻"
         />
-        <StatCard
-          label="Avg. Duration"
-          value={daysToMonths(Math.round(stats.avgDuration))}
-          sub={`Median ${daysToMonths(Math.round(stats.medianDuration))}`}
-          accent="orange"
-        />
-        <StatCard
-          label="Avg. Recovery"
-          value={daysToMonths(Math.round(stats.avgRecoveryDays))}
-          sub="From trough to prior high"
-          accent="green"
-        />
-        <StatCard
-          label="Bear Markets"
-          value={`${stats.bearMarkets}`}
-          sub="Drops > 20%"
-          accent="red"
-        />
-        <StatCard
-          label="Corrections"
-          value={`${stats.corrections}`}
-          sub={`Drops 10–20% · ${stats.minorEvents} minor (5–10%)`}
-          accent="orange"
+        <TypeStatRow
+          label="Corrections (≥5%)"
+          count={stats.corrections}
+          avgDrawdown={stats.corrAvgDrawdown}
+          avgDuration={stats.corrAvgDuration}
+          avgRecovery={stats.corrAvgRecovery}
+          accent="text-orange-400"
+          icon="📉"
         />
       </div>
 
-      {/* ── Frequency + highlight row ────────────────────────────────── */}
+      {/* ── Frequency + highlights ───────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* Frequency card */}
         <div className="card p-4 sm:col-span-2">
@@ -111,29 +138,30 @@ export default function StatsPanel({ stats }: Props) {
               color="#ef4444"
             />
           </div>
-          <p className="text-xs text-slate-500 mt-3">
-            Based on {stats.totalEvents} events since 1987 ({stats.bearMarkets} bear · {stats.corrections} corrections · {stats.minorEvents} minor). Bar scale = 0–10 years.
+          <p className="text-xs text-theme-muted mt-3">
+            {stats.totalEvents} events since 1987 ({stats.bearMarkets} bear + {stats.corrections} corrections).
+            Bar scale: 0–10 years.
           </p>
         </div>
 
         {/* Worst crash */}
         <div className="card p-4 border-red-900/50 bg-red-950/20">
           <p className="text-xs text-red-400 uppercase tracking-wide font-medium mb-1">Worst Crash</p>
-          <p className="text-xl font-bold text-white">{stats.worstDrawdown.name}</p>
+          <p className="text-xl font-bold text-theme-primary">{stats.worstDrawdown.name}</p>
           <p className="text-red-400 font-semibold text-lg">{formatPercent(stats.worstDrawdown.drawdown)}</p>
-          <p className="text-xs text-slate-400 mt-1">{daysToMonths(stats.worstDrawdown.durationDays)} decline</p>
+          <p className="text-xs text-theme-muted mt-1">{daysToMonths(stats.worstDrawdown.durationDays)} decline</p>
         </div>
 
         {/* Fastest recovery */}
         <div className="card p-4 border-emerald-900/50 bg-emerald-950/20">
           <p className="text-xs text-emerald-400 uppercase tracking-wide font-medium mb-1">Fastest Recovery</p>
-          <p className="text-xl font-bold text-white">{stats.quickestRecovery.name}</p>
+          <p className="text-xl font-bold text-theme-primary">{stats.quickestRecovery.name}</p>
           <p className="text-emerald-400 font-semibold text-lg">
             {stats.quickestRecovery.recoveryDays
               ? daysToMonths(stats.quickestRecovery.recoveryDays)
               : 'N/A'}
           </p>
-          <p className="text-xs text-slate-400 mt-1">from trough to new ATH</p>
+          <p className="text-xs text-theme-muted mt-1">from trough to new ATH</p>
         </div>
       </div>
     </div>

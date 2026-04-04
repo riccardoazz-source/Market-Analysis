@@ -27,9 +27,9 @@ const ASSETS = {
 
 type AssetKey = keyof typeof ASSETS
 
-// CAPE P/E historical reference levels
-const CAPE_HIST_AVG   = 15.9   // long-run historical average (Shiller)
-const CAPE_MODERN_AVG = 27.2   // post-1990 modern average
+// CAPE P/E historical reference levels (Shiller)
+const CAPE_HIST_AVG   = 15.9   // long-run historical average
+const CAPE_MODERN_AVG = 27.2   // post-1990 average
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
@@ -71,7 +71,7 @@ function CustomTooltip({
                 {isNormalized
                   ? v.toFixed(1)
                   : assetKey === 'btc'
-                    ? `$${(v / 1000).toFixed(0)}k`
+                    ? `$${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v.toFixed(0)}`
                     : v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
               </span>
             </div>
@@ -83,11 +83,14 @@ function CustomTooltip({
         const meta  = ECO_META[activeEco]
         const entry = pMap.get('eco')
         if (!entry?.value) return null
+        const v = entry.value
         return (
           <div className="flex justify-between gap-4 mb-0.5 mt-1 pt-1 border-t border-slate-700">
             <span style={{ color: meta.color }}>{meta.shortLabel}</span>
             <span className="font-semibold text-white">
-              {entry.value.toFixed(activeEco === 'fed_rate' ? 2 : 1)}{meta.unit}
+              {activeEco === 'oil_price'
+                ? `$${v.toFixed(0)}/bbl`
+                : `${v.toFixed(activeEco === 'fed_rate' ? 2 : 1)}${meta.unit}`}
             </span>
           </div>
         )
@@ -99,11 +102,7 @@ function CustomTooltip({
 
       {activeDt && (
         <div className="mt-2 pt-2 border-t border-slate-700">
-          <p className={`font-semibold ${
-            activeDt.type === 'bear_market' ? 'text-red-400'
-            : activeDt.type === 'correction' ? 'text-orange-400'
-            : 'text-yellow-400'
-          }`}>
+          <p className={`font-semibold ${activeDt.type === 'bear_market' ? 'text-red-400' : 'text-orange-400'}`}>
             {activeDt.isOngoing ? '🔴 ' : ''}{activeDt.name}
           </p>
           <p className="text-slate-400">{formatPercent(activeDt.drawdown)} peak-to-trough</p>
@@ -154,7 +153,10 @@ export default function SP500Chart({
   const [isNormalized, setIsNormalized] = useState(false)
   const [activeEco,    setActiveEco]    = useState<EcoIndicator | null>(null)
 
-  // ── Initial brush start index ≈ 1987 ─────────────────────────────
+  // ── Show BTC on a separate right axis when not normalized ─────────
+  const showBtcAxis = activeAssets.has('btc') && !isNormalized
+
+  // ── Initial brush start ≈ 1987 ─────────────────────────────────────
   const defaultStartIndex = useMemo(() => {
     const target = new Date('1987-01-01').getTime()
     const idx    = data.findIndex((d) => d.timestamp >= target)
@@ -173,7 +175,7 @@ export default function SP500Chart({
     [data]
   )
 
-  // ── Merge eco data by timestamp ───────────────────────────────────
+  // ── Merge eco data ────────────────────────────────────────────────
   const ecoMap = useMemo(() => {
     if (!activeEco) return new Map<number, number>()
     const map = new Map<number, number>()
@@ -181,25 +183,20 @@ export default function SP500Chart({
     return map
   }, [activeEco, ecoData])
 
-  // ── Display data: normalized to defaultStartIndex, eco merged ─────
-  // NOTE: Does NOT depend on brushRange — this fixes the brush reset bug.
-  // The Brush component manages its own viewport state internally.
+  // ── Display data: normalized to defaultStartIndex, no brushRange dep ─
   const displayData = useMemo(() => {
     const base = chartData[defaultStartIndex]
-
     return chartData.map((d) => {
       const eco = activeEco ? ecoMap.get(d.timestamp) ?? null : null
-
       if (!base || !isNormalized) {
         return { ...d, sp500Norm: null, goldNorm: null, bondsNorm: null, btcNorm: null, eco }
       }
-
       return {
         ...d,
-        sp500Norm: base.close > 0                 ? (d.close  / base.close)  * 100 : null,
-        goldNorm:  base.gold  && base.gold  > 0   ? ((d.gold  ?? 0) / base.gold)  * 100 : null,
-        bondsNorm: base.bonds && base.bonds > 0   ? ((d.bonds ?? 0) / base.bonds) * 100 : null,
-        btcNorm:   base.btc   && base.btc   > 0   ? ((d.btc   ?? 0) / base.btc)   * 100 : null,
+        sp500Norm: base.close > 0               ? (d.close  / base.close)  * 100 : null,
+        goldNorm:  base.gold  && base.gold  > 0  ? ((d.gold  ?? 0) / base.gold)  * 100 : null,
+        bondsNorm: base.bonds && base.bonds > 0  ? ((d.bonds ?? 0) / base.bonds) * 100 : null,
+        btcNorm:   base.btc   && base.btc   > 0  ? ((d.btc   ?? 0) / base.btc)   * 100 : null,
         eco,
       }
     })
@@ -208,7 +205,7 @@ export default function SP500Chart({
   const filteredDownturns = useMemo(
     () => downturns.filter((d) => {
       if (filter === 'bear')       return d.type === 'bear_market'
-      if (filter === 'correction') return d.type === 'correction' || d.type === 'minor'
+      if (filter === 'correction') return d.type === 'correction'
       return true
     }),
     [downturns, filter]
@@ -220,9 +217,10 @@ export default function SP500Chart({
     if (v >= 1000) return `${(v / 1000).toFixed(0)}k`
     return v.toString()
   }, [isNormalized])
-
-  const formatEcoY = useCallback((v: number) => {
+  const formatBtcY  = useCallback((v: number) => `$${v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}`, [])
+  const formatEcoY  = useCallback((v: number) => {
     if (!activeEco) return ''
+    if (activeEco === 'oil_price') return `$${v.toFixed(0)}`
     return `${v.toFixed(activeEco === 'fed_rate' ? 1 : 0)}${ECO_META[activeEco].unit}`
   }, [activeEco])
 
@@ -246,6 +244,9 @@ export default function SP500Chart({
 
   const ecoDomain = activeEco ? ECO_META[activeEco].domain : [0, 10]
 
+  // Chart right margin: accommodate BTC axis and/or eco axis
+  const rightMargin = showBtcAxis && activeEco ? 110 : (showBtcAxis || activeEco) ? 58 : 15
+
   return (
     <div className="card p-4 sm:p-6">
       {/* ── Header ──────────────────────────────────────────────────── */}
@@ -253,7 +254,7 @@ export default function SP500Chart({
         <div>
           <h3 className="text-base font-semibold text-white">S&P 500 — Historical Performance</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Shaded areas = downturn periods. Click to highlight. Drag bottom brush to zoom.
+            Shaded areas = downturn periods · Click to highlight · Drag brush to zoom
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -293,6 +294,11 @@ export default function SP500Chart({
             onClick={() => toggleAsset(k)}
           />
         ))}
+        {showBtcAxis && (
+          <span className="text-xs text-orange-400/80 self-center ml-1">
+            Bitcoin on right axis (USD)
+          </span>
+        )}
         {isNormalized && activeAssets.size > 1 && (
           <span className="text-xs text-indigo-400 self-center ml-1">
             Normalized to 100 at chart start
@@ -322,7 +328,7 @@ export default function SP500Chart({
         )}
       </div>
 
-      {/* CAPE average legend (only when CAPE is active) */}
+      {/* CAPE average legend */}
       {activeEco === 'pe_ratio' && (
         <div className="flex flex-wrap items-center gap-4 mb-2 text-xs">
           <div className="flex items-center gap-1.5">
@@ -344,11 +350,7 @@ export default function SP500Chart({
         </div>
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-orange-500/50 border border-orange-500/70" />
-          Correction (10–20%)
-        </div>
-        <div className="flex items-center gap-1.5">
-          <div className="w-3 h-3 rounded bg-yellow-500/40 border border-yellow-500/60" />
-          Minor Decline (5–10%)
+          Correction (≥5%)
         </div>
         {downturns.some((d) => d.isOngoing) && (
           <div className="flex items-center gap-1.5">
@@ -363,7 +365,7 @@ export default function SP500Chart({
 
       {/* ── Chart ───────────────────────────────────────────────────── */}
       <ResponsiveContainer width="100%" height={440}>
-        <ComposedChart data={displayData} margin={{ top: 5, right: activeEco ? 55 : 15, left: 5, bottom: 5 }}>
+        <ComposedChart data={displayData} margin={{ top: 5, right: rightMargin, left: 5, bottom: 5 }}>
           <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
 
           <XAxis
@@ -389,7 +391,21 @@ export default function SP500Chart({
             width={50}
           />
 
-          {/* Right axis: economic indicator */}
+          {/* Right axis: BTC price when BTC active and not normalized */}
+          {showBtcAxis && (
+            <YAxis
+              yAxisId="btc"
+              orientation="right"
+              domain={[0, 'auto']}
+              tickFormatter={formatBtcY}
+              stroke={ASSETS.btc.color}
+              tick={{ fill: ASSETS.btc.color, fontSize: 10 }}
+              tickLine={false}
+              width={54}
+            />
+          )}
+
+          {/* Right axis: economic indicator (offset if BTC axis also present) */}
           {activeEco && (
             <YAxis
               yAxisId="eco"
@@ -418,9 +434,8 @@ export default function SP500Chart({
           {/* Downturn shading */}
           {filteredDownturns.map((dt) => {
             const isBear   = dt.type === 'bear_market'
-            const isMinor  = dt.type === 'minor'
             const isActive = dt.id === activeDownturnId
-            const fill     = isBear ? '#ef4444' : isMinor ? '#eab308' : '#f97316'
+            const fill     = isBear ? '#ef4444' : '#f97316'
             return (
               <ReferenceArea
                 key={dt.id}
@@ -428,7 +443,7 @@ export default function SP500Chart({
                 x1={new Date(dt.startDate).getTime()}
                 x2={new Date(dt.endDate).getTime()}
                 fill={fill}
-                fillOpacity={dt.isOngoing ? 0.28 : isActive ? 0.30 : isMinor ? 0.12 : 0.15}
+                fillOpacity={dt.isOngoing ? 0.28 : isActive ? 0.30 : 0.15}
                 stroke={fill}
                 strokeOpacity={dt.isOngoing ? 0.9 : isActive ? 0.8 : 0.4}
                 strokeWidth={dt.isOngoing ? 2 : isActive ? 1.5 : 1}
@@ -507,10 +522,10 @@ export default function SP500Chart({
             />
           )}
 
-          {/* Bitcoin */}
+          {/* Bitcoin — uses BTC axis in linear mode, main axis in index mode */}
           {activeAssets.has('btc') && (
             <Line
-              yAxisId="main"
+              yAxisId={isNormalized ? 'main' : 'btc'}
               type="monotone"
               dataKey={isNormalized ? 'btcNorm' : 'btc'}
               stroke={ASSETS.btc.color}
@@ -553,7 +568,7 @@ export default function SP500Chart({
 
       {!isNormalized && activeAssets.size > 1 && (
         <p className="text-xs text-slate-500 mt-2 text-center">
-          Tip: enable <strong className="text-indigo-400">Index Mode</strong> to compare all assets on the same scale
+          Tip: enable <strong className="text-indigo-400">Index Mode</strong> to compare all assets on a single scale
         </p>
       )}
     </div>

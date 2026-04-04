@@ -13,6 +13,7 @@ export type DownturnCategory =
   | 'pandemic'
   | 'inflation_rates'
   | 'geopolitical'
+  | 'war'
   | 'oil_shock'
   | 'market_structure'
   | 'political'
@@ -21,8 +22,9 @@ export const CATEGORY_META: Record<DownturnCategory, { label: string; color: str
   tech_bubble:      { label: 'Tech Bubble',           color: 'bg-purple-900/70 text-purple-200 border-purple-700/50',  icon: '💻' },
   credit_crisis:    { label: 'Credit Crisis',          color: 'bg-red-900/70 text-red-200 border-red-700/50',          icon: '🏦' },
   pandemic:         { label: 'Pandemic',               color: 'bg-green-900/70 text-green-200 border-green-700/50',    icon: '🦠' },
-  inflation_rates:  { label: 'Inflation / Rate Hikes', color: 'bg-orange-900/70 text-orange-200 border-orange-700/50', icon: '📈' },
+  inflation_rates:  { label: 'Inflation / Rates',      color: 'bg-orange-900/70 text-orange-200 border-orange-700/50', icon: '📈' },
   geopolitical:     { label: 'Geopolitical',           color: 'bg-blue-900/70 text-blue-200 border-blue-700/50',       icon: '🌍' },
+  war:              { label: 'War / Conflict',          color: 'bg-rose-900/70 text-rose-200 border-rose-700/50',       icon: '⚔️' },
   oil_shock:        { label: 'Oil Shock',              color: 'bg-yellow-900/70 text-yellow-200 border-yellow-700/50', icon: '🛢️' },
   market_structure: { label: 'Market Structure',       color: 'bg-slate-700/70 text-slate-200 border-slate-500/50',    icon: '⚙️' },
   political:        { label: 'Political',              color: 'bg-cyan-900/70 text-cyan-200 border-cyan-700/50',       icon: '🏛️' },
@@ -47,7 +49,7 @@ export interface Downturn {
   recoveryDays: number | null
   description: string
   cause: string
-  type: 'bear_market' | 'correction' | 'minor'  // bear >20%, correction 10-20%, minor 5-10%
+  type: 'bear_market' | 'correction'  // bear >20%, correction ≥5%
   tags: string[]
   categories: DownturnCategory[]
   assetPerf?: AssetPerf
@@ -58,15 +60,28 @@ export interface Downturn {
 export interface SP500Stats {
   totalEvents: number
   bearMarkets: number
-  corrections: number   // 10–20% declines
-  minorEvents: number   // 5–10% declines
+  corrections: number    // all non-bear (≥5%)
+
+  // Overall averages
   avgDrawdown: number
   avgDuration: number
   medianDrawdown: number
   medianDuration: number
   avgRecoveryDays: number
-  avgDaysBetweenAll: number    // avg days between any ≥5% downturn
+
+  // Bear market averages
+  bearAvgDrawdown: number
+  bearAvgDuration: number
+  bearAvgRecovery: number
+
+  // Correction averages
+  corrAvgDrawdown: number
+  corrAvgDuration: number
+  corrAvgRecovery: number
+
+  avgDaysBetweenAll: number    // avg days between any ≥5% event
   avgDaysBetweenBears: number  // avg days between bear markets
+
   worstDrawdown: Downturn
   longestDuration: Downturn
   quickestRecovery: Downturn
@@ -80,7 +95,7 @@ export interface EcoPoint {
   value: number
 }
 
-export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'sp_concentration'
+export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'sp_concentration' | 'inflation_cpi' | 'oil_price'
 
 export const ECO_META: Record<EcoIndicator, {
   label: string
@@ -103,7 +118,7 @@ export const ECO_META: Record<EcoIndicator, {
     shortLabel: 'CAPE P/E',
     color: '#f472b6',
     unit: 'x',
-    description: 'Cyclically Adjusted Price-to-Earnings Ratio (10-year avg earnings)',
+    description: 'Cyclically Adjusted P/E — 10-yr avg inflation-adjusted earnings',
     domain: [5, 50],
   },
   sp_concentration: {
@@ -113,5 +128,21 @@ export const ECO_META: Record<EcoIndicator, {
     unit: '%',
     description: 'Percentage of S&P 500 market cap held by the top 10 stocks',
     domain: [10, 45],
+  },
+  inflation_cpi: {
+    label: 'US Inflation (CPI YoY)',
+    shortLabel: 'CPI Inflation',
+    color: '#fb923c',
+    unit: '%',
+    description: 'US Consumer Price Index — year-over-year % change',
+    domain: [-4, 12],
+  },
+  oil_price: {
+    label: 'WTI Crude Oil',
+    shortLabel: 'Oil (WTI)',
+    color: '#84cc16',
+    unit: '$',
+    description: 'WTI Crude Oil spot price in USD per barrel',
+    domain: [0, 160],
   },
 }

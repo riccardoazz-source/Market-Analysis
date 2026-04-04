@@ -1,4 +1,5 @@
 import { DataPoint, Downturn, DownturnCategory, SP500Stats } from './types'
+// DownturnCategory is used in detectOngoingDownturn for inferred categories
 import { formatDateShort } from './utils'
 
 function daysBetween(d1: string, d2: string): number {
@@ -37,7 +38,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -19.9,
     durationDays: 87,
     recoveryDays: 125,
-    categories: ['geopolitical', 'oil_shock'],
+    categories: ['war', 'geopolitical', 'oil_shock'],
     cause:
       "Iraq's invasion of Kuwait on August 2, 1990 sent oil prices surging from $21 to $46/barrel. Combined with a pre-existing credit crunch (S&L crisis aftermath), the US economy tipped into recession.",
     description:
@@ -62,7 +63,7 @@ export const DOWNTURNS: Downturn[] = [
       'The Federal Reserve raised interest rates seven times in 12 months (1994–1995), shocking bond markets globally. The sudden rate rises caused massive losses in bond portfolios, including Orange County, California, which filed for bankruptcy after losing $1.7 billion in interest-rate derivatives.',
     description:
       "After years of near-zero rates, the Fed's 1994 tightening cycle blindsided markets. Rates rose from 3% to 5.5% in rapid succession. Bond markets suffered their worst year in decades — the 'Great Bond Massacre.' Orange County went bankrupt. The S&P 500 corrected but held up relatively well compared to fixed income, recovering to new highs by November 1994.",
-    type: 'minor',
+    type: 'correction',
     tags: ['Fed rate hikes', 'bond market', 'Orange County', '1994'],
     assetPerf: { gold: -2.1 },
   },
@@ -277,9 +278,9 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -25.4,
     durationDays: 282,
     recoveryDays: 464,
-    categories: ['inflation_rates', 'geopolitical'],
+    categories: ['inflation_rates', 'geopolitical', 'war'],
     cause:
-      "The Federal Reserve's aggressive campaign to fight 40-year-high inflation by raising rates from near 0% to over 5% in 12 months. Russia's invasion of Ukraine added energy price shocks.",
+      "The Federal Reserve's aggressive campaign to fight 40-year-high inflation by raising rates from near 0% to over 5% in 12 months. Russia's invasion of Ukraine added energy price shocks and geopolitical uncertainty.",
     description:
       "Surging post-pandemic inflation — peaking at 9.1% in June 2022 — forced the Fed into the most aggressive tightening cycle since the 1980s. This compressed valuations across both stocks and bonds simultaneously, creating one of the worst years for balanced portfolios in decades. Russia's invasion of Ukraine in February 2022 added energy shocks and geopolitical uncertainty. Tech stocks bore the brunt of multiple compression. Recovery to prior highs took over two years.",
     type: 'bear_market',
@@ -322,7 +323,7 @@ export const DOWNTURNS: Downturn[] = [
       'Three consecutive above-forecast CPI prints (January, February, March 2024) pushed back Fed rate-cut expectations from March to September 2024. A direct Iran–Israel military exchange on April 13–14 added a geopolitical risk premium.',
     description:
       'After a strong early-2024 rally driven by rate-cut optimism, persistent inflation data forced markets to price out early Fed cuts. The 10-year Treasury yield climbed above 4.6%. A direct exchange of attacks between Iran and Israel on April 13–14 added geopolitical fears. The brief correction reversed quickly as Q1 2024 corporate earnings proved resilient, and the S&P 500 recovered to new highs by mid-May.',
-    type: 'minor',
+    type: 'correction',
     tags: ['inflation', 'CPI', 'Iran-Israel', 'rate cuts', '2024'],
     assetPerf: { gold: +4.5, bonds: -3.2, btc: -19.0 },
   },
@@ -342,7 +343,7 @@ export const DOWNTURNS: Downturn[] = [
       'The Bank of Japan unexpectedly raised rates on July 31, 2024, triggering an unwind of the massive yen carry trade. A weak US non-farm payrolls report on August 2 (114k jobs vs. 175k expected) simultaneously raised US recession fears.',
     description:
       "Japan's surprise rate hike ended the era of zero rates there, forcing an abrupt reversal of the yen carry trade — where investors had borrowed cheaply in yen to buy global risk assets. On August 5, Japan's Nikkei fell 12% — its worst day since 1987 — and the S&P 500 dropped over 3%. The VIX spiked to 65 intraday, its highest since COVID. The panic subsided within days as the BoJ signaled caution, and US economic data remained resilient.",
-    type: 'minor',
+    type: 'correction',
     tags: ['yen carry trade', 'Bank of Japan', 'VIX spike', 'August 5', '2024'],
     assetPerf: { gold: -0.5, bonds: +3.2, btc: -26.0 },
   },
@@ -370,8 +371,13 @@ export const DOWNTURNS: Downturn[] = [
 
 /**
  * Auto-detects any ongoing or recent downturn not covered by the curated list.
+ * Pass currentFedRate and currentCape to enrich the description with macro context.
  */
-export function detectOngoingDownturn(data: DataPoint[]): Downturn | null {
+export function detectOngoingDownturn(
+  data: DataPoint[],
+  currentFedRate?: number,
+  currentCape?: number,
+): Downturn | null {
   if (data.length < 6) return null
 
   const lastCurated = DOWNTURNS[DOWNTURNS.length - 1]
@@ -401,12 +407,41 @@ export function detectOngoingDownturn(data: DataPoint[]): Downturn | null {
   const currentPct = ((latest.close - peak.close) / peak.close) * 100
   const isOngoing  = latest.date === trough.date || currentPct < -4
 
-  const duration = daysBetween(peak.date, trough.date)
-  const eventType = drawdownPct < -20 ? 'bear_market' : drawdownPct < -10 ? 'correction' : 'minor'
-  const typeLabel = drawdownPct < -20 ? 'Bear Market' : drawdownPct < -10 ? 'Correction' : 'Minor Decline'
+  const duration  = daysBetween(peak.date, trough.date)
+  const eventType = drawdownPct < -20 ? 'bear_market' : 'correction'
+  const typeLabel = drawdownPct < -20 ? 'Bear Market' : 'Correction'
   const name      = isOngoing
     ? `Ongoing ${typeLabel}`
     : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
+
+  // Infer likely macro categories from timing and current conditions
+  const inferredCategories: DownturnCategory[] = []
+  const peakYear = parseInt(peak.date.substring(0, 4))
+  if (peakYear >= 2024)                                     inferredCategories.push('geopolitical')
+  if (currentFedRate !== undefined && currentFedRate > 3.5) inferredCategories.push('inflation_rates')
+  if (peakYear === 2022 || peakYear === 2023)               inferredCategories.push('inflation_rates')
+  // de-duplicate
+  const seen = new Set<string>()
+  const uniqueCats = inferredCategories.filter((c) => {
+    if (seen.has(c)) return false
+    seen.add(c)
+    return true
+  }) as DownturnCategory[]
+
+  // Macro context snippet for description
+  const macroContext: string[] = []
+  if (currentFedRate !== undefined)
+    macroContext.push(`Fed rate: ${currentFedRate.toFixed(2)}%`)
+  if (currentCape !== undefined)
+    macroContext.push(`CAPE P/E: ${currentCape.toFixed(1)}x${currentCape > 30 ? ' (elevated)' : ''}`)
+
+  const macroSuffix = macroContext.length > 0
+    ? ` Current macro conditions — ${macroContext.join(' · ')}.`
+    : ''
+
+  const description = isOngoing
+    ? `The S&P 500 is currently ${Math.abs(drawdownPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)}. The interim trough of ${trough.close.toLocaleString()} was hit on ${formatDateShort(trough.date)}.${macroSuffix} Full root-cause analysis will be added once the event concludes.`
+    : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peak.close.toLocaleString()} (${formatDateShort(peak.date)}) to ${trough.close.toLocaleString()} (${formatDateShort(trough.date)}) over ${duration} days. Recovery is underway.${macroSuffix}`
 
   return {
     id: 99,
@@ -419,13 +454,11 @@ export function detectOngoingDownturn(data: DataPoint[]): Downturn | null {
     drawdown: Math.round(drawdownPct * 10) / 10,
     durationDays: duration,
     recoveryDays: null,
-    description: isOngoing
-      ? `The S&P 500 is currently ${Math.abs(drawdownPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)}. The index hit an interim trough of ${trough.close.toLocaleString()} on ${formatDateShort(trough.date)}. Full context and root cause analysis will be added once the event concludes.`
-      : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peak.close.toLocaleString()} (${formatDateShort(peak.date)}) to ${trough.close.toLocaleString()} (${formatDateShort(trough.date)}) over ${duration} days. Recovery is underway.`,
+    description,
     cause: 'Cause analysis pending — auto-detected from live market data.',
     type: eventType,
     tags: ['auto-detected', isOngoing ? 'ongoing' : 'recent'],
-    categories: [],
+    categories: uniqueCats,
     isOngoing,
     isAutoDetected: true,
   }
@@ -437,19 +470,22 @@ function median(arr: number[]): number {
   return sorted.length % 2 !== 0 ? sorted[mid] : (sorted[mid - 1] + sorted[mid]) / 2
 }
 
+function avgOf(arr: number[]): number {
+  return arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : 0
+}
+
 export function computeStats(allDownturns: Downturn[]): SP500Stats {
-  const curated    = allDownturns.filter((d) => !d.isAutoDetected)
+  const curated     = allDownturns.filter((d) => !d.isAutoDetected)
   const bearMarkets = curated.filter((d) => d.type === 'bear_market')
   const corrections = curated.filter((d) => d.type === 'correction')
-  const minors      = curated.filter((d) => d.type === 'minor')
 
   const drawdowns  = curated.map((d) => d.drawdown)
   const durations  = curated.map((d) => d.durationDays)
   const recoveries = curated.filter((d) => d.recoveryDays !== null).map((d) => d.recoveryDays as number)
 
-  const avgDrawdown    = drawdowns.reduce((a, b)  => a + b, 0) / drawdowns.length
-  const avgDuration    = durations.reduce((a, b)  => a + b, 0) / durations.length
-  const avgRecoveryDays = recoveries.reduce((a, b) => a + b, 0) / recoveries.length
+  // Per-type averages
+  const bearRecoveries = bearMarkets.filter((d) => d.recoveryDays !== null).map((d) => d.recoveryDays as number)
+  const corrRecoveries = corrections.filter((d) => d.recoveryDays !== null).map((d) => d.recoveryDays as number)
 
   const worstDrawdown   = [...curated].sort((a, b) => a.drawdown - b.drawdown)[0]
   const longestDuration = [...curated].sort((a, b) => b.durationDays - a.durationDays)[0]
@@ -476,12 +512,21 @@ export function computeStats(allDownturns: Downturn[]): SP500Stats {
     totalEvents: curated.length,
     bearMarkets: bearMarkets.length,
     corrections: corrections.length,
-    minorEvents: minors.length,
-    avgDrawdown,
-    avgDuration,
+
+    avgDrawdown:    avgOf(drawdowns),
+    avgDuration:    avgOf(durations),
     medianDrawdown: median(drawdowns),
     medianDuration: median(durations),
-    avgRecoveryDays,
+    avgRecoveryDays: avgOf(recoveries),
+
+    bearAvgDrawdown: avgOf(bearMarkets.map((d) => d.drawdown)),
+    bearAvgDuration: avgOf(bearMarkets.map((d) => d.durationDays)),
+    bearAvgRecovery: avgOf(bearRecoveries),
+
+    corrAvgDrawdown: avgOf(corrections.map((d) => d.drawdown)),
+    corrAvgDuration: avgOf(corrections.map((d) => d.durationDays)),
+    corrAvgRecovery: avgOf(corrRecoveries),
+
     avgDaysBetweenAll,
     avgDaysBetweenBears,
     worstDrawdown,

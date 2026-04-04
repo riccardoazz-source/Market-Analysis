@@ -20,7 +20,7 @@ type SortKey     = 'date' | 'drawdown' | 'duration'
 // All unique categories in the dataset
 const ALL_CATEGORIES: DownturnCategory[] = [
   'tech_bubble', 'credit_crisis', 'pandemic', 'inflation_rates',
-  'geopolitical', 'oil_shock', 'market_structure', 'political',
+  'geopolitical', 'war', 'oil_shock', 'market_structure', 'political',
 ]
 
 export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Props) {
@@ -38,7 +38,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
       downturns
         .filter((d) => {
           if (typeFilter === 'bear')       return d.type === 'bear_market'
-          if (typeFilter === 'correction') return d.type === 'correction' || d.type === 'minor'
+          if (typeFilter === 'correction') return d.type === 'correction'
           return true
         })
         .filter((d) => {
@@ -155,7 +155,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
                       : 'bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                   }`}
                 >
-                  {f === 'all' ? 'All' : f === 'bear' ? 'Bear Markets' : 'Corrections & Minor'}
+                  {f === 'all' ? 'All' : f === 'bear' ? 'Bear Markets' : 'Corrections'}
                 </button>
               ))}
             </div>
@@ -237,16 +237,17 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
       </section>
 
       {/* ── Methodology ────────────────────────────────────────────────── */}
-      <section className="card p-5 bg-slate-900/40">
-        <h3 className="text-sm font-semibold text-slate-300 mb-2">Methodology & Data Sources</h3>
-        <p className="text-xs text-slate-500 leading-relaxed">
-          This analysis covers major S&P 500 drawdowns ≥10% since 1987. <strong className="text-slate-400">Bear
-          markets</strong> = declines exceeding 20%. <strong className="text-slate-400">Corrections</strong>
-          {' '} = 10–20% declines. Duration is peak-to-trough. Recovery is trough to prior ATH.
-          <strong className="text-slate-400"> Auto-detection</strong> identifies any ongoing events not yet in the
-          curated list. Multi-asset data: S&P 500 (^GSPC), Gold futures (GC=F), 20+ Year Treasury ETF (TLT),
-          Bitcoin (BTC-USD) — all sourced from Yahoo Finance. Data shown normalized to base 100 enables
-          direct performance comparison across assets during any selected period.
+      <section className="card p-5">
+        <h3 className="text-sm font-semibold text-theme-secondary mb-2">Methodology & Data Sources</h3>
+        <p className="text-xs text-theme-muted leading-relaxed">
+          Covers all S&P 500 drawdowns ≥5% since 1987. <strong className="text-theme-secondary">Bear
+          markets</strong> = declines &gt;20%. <strong className="text-theme-secondary">Corrections</strong>
+          {' '}= declines ≥5%. Duration is peak-to-trough. Recovery is trough to prior ATH.
+          <strong className="text-theme-secondary"> Auto-detection</strong> identifies ongoing events not yet in the
+          curated list, with heuristic macro-cause inference based on current Fed rate and CAPE.
+          {' '}Assets (Yahoo Finance): S&P 500 (^GSPC), Gold (GC=F), 20yr Treasuries (TLT), Bitcoin (BTC-USD).
+          {' '}Indicators: CAPE (Robert Shiller / Yale), Fed Rate (Federal Reserve),
+          CPI (US Bureau of Labor Statistics), WTI Oil — all data for informational purposes only.
         </p>
       </section>
     </div>
