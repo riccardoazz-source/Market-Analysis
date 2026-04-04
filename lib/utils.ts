@@ -1,4 +1,5 @@
 import { format, differenceInDays, parseISO } from 'date-fns'
+export { differenceInDays, parseISO }
 
 export function formatDate(dateStr: string): string {
   return format(parseISO(dateStr), 'MMM d, yyyy')

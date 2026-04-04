@@ -1,13 +1,20 @@
 import { Suspense } from 'react'
-import { fetchSP500Data } from '@/lib/sp500'
-import { DOWNTURNS, computeStats } from '@/lib/downturns'
+import { fetchMarketData } from '@/lib/sp500'
+import { DOWNTURNS, computeStats, detectOngoingDownturn } from '@/lib/downturns'
 import Dashboard from '@/components/Dashboard'
 
-export const revalidate = 86400
+export const revalidate = 3600 // re-fetch every hour for live data
 
 export default async function Home() {
-  const sp500Data = await fetchSP500Data()
-  const stats = computeStats()
+  const marketData = await fetchMarketData()
+
+  // Detect any ongoing downturn not yet in the curated list
+  const ongoingDownturn = detectOngoingDownturn(marketData)
+  const allDownturns = ongoingDownturn
+    ? [...DOWNTURNS, ongoingDownturn]
+    : DOWNTURNS
+
+  const stats = computeStats(allDownturns)
 
   return (
     <main className="min-h-screen bg-slate-950">
@@ -23,7 +30,9 @@ export default async function Home() {
             </div>
             <div>
               <h1 className="text-lg font-bold text-white leading-none">S&P 500 Downturn Analyzer</h1>
-              <p className="text-xs text-slate-400 mt-0.5">Historical bear markets & corrections since 1987</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Bear markets, corrections & multi-asset analysis · Live data on Vercel
+              </p>
             </div>
           </div>
         </div>
@@ -36,21 +45,25 @@ export default async function Home() {
           <span className="text-blue-400">Explained</span>
         </h2>
         <p className="text-slate-400 max-w-2xl text-base">
-          An interactive analysis of every bear market and significant correction in the S&P 500 —
-          what caused it, how deep the fall was, how long it lasted, and how long recovery took.
+          An interactive analysis of every bear market and correction since 1987 — what caused it,
+          how deep the fall was, how long it lasted, how Gold, Bonds and Bitcoin behaved,
+          and how long recovery took.
         </p>
       </section>
 
-      {/* Dashboard — client component with charts and interactivity */}
       <Suspense fallback={<LoadingPlaceholder />}>
-        <Dashboard sp500Data={sp500Data} downturns={DOWNTURNS} stats={stats} />
+        <Dashboard sp500Data={marketData} downturns={allDownturns} stats={stats} />
       </Suspense>
 
-      {/* Footer */}
       <footer className="border-t border-slate-800 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs text-slate-500">
-          <p>Data sourced from Yahoo Finance. For informational purposes only — not financial advice.</p>
-          <p className="mt-1">S&P 500 historical data © respective data providers.</p>
+          <p>
+            Data sourced from Yahoo Finance (^GSPC, GC=F, TLT, BTC-USD).
+            For informational purposes only — not financial advice.
+          </p>
+          <p className="mt-1">
+            Revalidates hourly on Vercel. Static fallback used when Yahoo Finance is unavailable.
+          </p>
         </div>
       </footer>
     </main>
