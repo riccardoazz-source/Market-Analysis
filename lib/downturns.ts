@@ -17,7 +17,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -33.5,
     durationDays: 101,
     recoveryDays: 430,
-    categories: ['market_structure'],
+    categories: ['market_structure', 'inflation_rates'],
     cause:
       'Portfolio insurance strategies and program trading created a self-reinforcing cascade of sell orders. Rising interest rates and market overvaluation provided the tinder; automated strategies lit the match.',
     description:
@@ -37,7 +37,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -19.9,
     durationDays: 87,
     recoveryDays: 125,
-    categories: ['war', 'geopolitical', 'oil_shock'],
+    categories: ['war', 'geopolitical', 'oil_shock', 'credit_crisis'],
     cause:
       "Iraq's invasion of Kuwait on August 2, 1990 sent oil prices surging from $21 to $46/barrel. Combined with a pre-existing credit crunch (S&L crisis aftermath), the US economy tipped into recession.",
     description:
@@ -97,7 +97,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -22.4,
     durationDays: 83,
     recoveryDays: 46,
-    categories: ['credit_crisis', 'geopolitical'],
+    categories: ['credit_crisis', 'geopolitical', 'market_structure'],
     cause:
       "Russia's sovereign debt default on August 17, 1998 triggered a global flight to safety. The near-collapse of Long-Term Capital Management (LTCM) — a $125 billion hedge fund — threatened to seize global credit markets, forcing an unprecedented Fed-orchestrated bailout.",
     description:
@@ -117,7 +117,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -49.1,
     durationDays: 929,
     recoveryDays: 1694,
-    categories: ['tech_bubble'],
+    categories: ['tech_bubble', 'market_structure', 'geopolitical'],
     cause:
       'The collapse of the internet stock bubble following years of speculative excess. Compounded by the September 11 attacks and major corporate accounting scandals (Enron, WorldCom, Tyco).',
     description:
@@ -157,7 +157,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -9.6,
     durationDays: 31,
     recoveryDays: 33,
-    categories: ['credit_crisis'],
+    categories: ['credit_crisis', 'market_structure'],
     cause:
       "Bear Stearns revealed two hedge funds had lost nearly all value from subprime mortgage exposure (July 2007). On August 9, BNP Paribas froze three funds citing inability to value subprime assets — effectively the moment global credit markets first seized up.",
     description:
@@ -177,7 +177,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -56.8,
     durationDays: 517,
     recoveryDays: 1480,
-    categories: ['credit_crisis'],
+    categories: ['credit_crisis', 'market_structure'],
     cause:
       'The collapse of the US housing market and subprime mortgage crisis led to the failure of major financial institutions including Lehman Brothers, causing a global credit freeze.',
     description:
@@ -197,7 +197,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -16.2,
     durationDays: 67,
     recoveryDays: 38,
-    categories: ['market_structure', 'geopolitical'],
+    categories: ['market_structure', 'geopolitical', 'credit_crisis'],
     cause:
       "European sovereign debt fears (Greece bailout) and the May 6 'Flash Crash', where the Dow briefly dropped 1,000 points in minutes due to a large algorithmic sell order.",
     description:
@@ -217,7 +217,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -19.4,
     durationDays: 157,
     recoveryDays: 46,
-    categories: ['political'],
+    categories: ['political', 'credit_crisis', 'geopolitical'],
     cause:
       "Political gridlock over raising the US debt ceiling brought the country close to default. S&P stripped the United States of its AAA credit rating for the first time. Eurozone debt crises in Italy and Spain added to the turmoil.",
     description:
@@ -237,7 +237,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -14.2,
     durationDays: 266,
     recoveryDays: 151,
-    categories: ['geopolitical', 'oil_shock'],
+    categories: ['geopolitical', 'oil_shock', 'inflation_rates'],
     cause:
       'Fears of a hard landing in the Chinese economy, crude oil prices collapsing from $100 to below $30 per barrel, and the Federal Reserve raising interest rates for the first time since 2006.',
     description:
@@ -277,7 +277,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -19.8,
     durationDays: 95,
     recoveryDays: 120,
-    categories: ['inflation_rates', 'geopolitical'],
+    categories: ['inflation_rates', 'geopolitical', 'political'],
     cause:
       'Aggressive Federal Reserve interest rate hikes (4 raises in 2018), escalating US-China trade war tariffs, and widespread fears of a global economic slowdown.',
     description:
@@ -297,7 +297,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -33.9,
     durationDays: 33,
     recoveryDays: 148,
-    categories: ['pandemic'],
+    categories: ['pandemic', 'market_structure'],
     cause:
       'The global spread of the COVID-19 pandemic led governments worldwide to shut down economies, creating an unprecedented sudden stop in economic activity.',
     description:
@@ -317,7 +317,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -10.0,
     durationDays: 21,
     recoveryDays: 62,
-    categories: ['market_structure', 'pandemic'],
+    categories: ['market_structure', 'tech_bubble', 'pandemic'],
     cause:
       "An extreme 'FOMO' call-option-buying frenzy — driven partly by SoftBank's $4 billion options positioning (dubbed the 'Nasdaq whale') — inflated a tech/growth stock bubble. When that positioning unwound, the Nasdaq fell 12% in three days. COVID second-wave fears and US stimulus stalemate added to the selloff.",
     description:
@@ -337,7 +337,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -25.4,
     durationDays: 282,
     recoveryDays: 464,
-    categories: ['inflation_rates', 'geopolitical', 'war'],
+    categories: ['inflation_rates', 'geopolitical', 'war', 'oil_shock'],
     cause:
       "The Federal Reserve's aggressive campaign to fight 40-year-high inflation by raising rates from near 0% to over 5% in 12 months. Russia's invasion of Ukraine added energy price shocks and geopolitical uncertainty.",
     description:
@@ -397,7 +397,7 @@ export const DOWNTURNS: Downturn[] = [
     drawdown: -8.5,
     durationDays: 20,
     recoveryDays: 17,
-    categories: ['geopolitical', 'market_structure'],
+    categories: ['market_structure', 'inflation_rates', 'geopolitical'],
     cause:
       'The Bank of Japan unexpectedly raised rates on July 31, 2024, triggering an unwind of the massive yen carry trade. A weak US non-farm payrolls report on August 2 (114k jobs vs. 175k expected) simultaneously raised US recession fears.',
     description:
@@ -473,9 +473,11 @@ export function detectOngoingDownturn(
     ? `Ongoing ${typeLabel}`
     : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
 
-  // Categories are left empty for auto-detected events — full cause analysis
-  // is added manually once an event concludes. Macro context is surfaced in description.
+  // Signal-based category inference from actual market/macro data (no year heuristics)
   const uniqueCats: DownturnCategory[] = []
+  if (currentFedRate !== undefined && currentFedRate > 4.0) uniqueCats.push('inflation_rates')
+  if (currentCape    !== undefined && currentCape    > 35)  uniqueCats.push('market_structure')
+  if (drawdownPct < -20)                                     uniqueCats.push('credit_crisis')
 
   // Macro context snippet for description
   const macroContext: string[] = []

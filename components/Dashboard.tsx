@@ -30,8 +30,9 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
   const [sort,             setSort]             = useState<SortKey>('date')
   const listRef = useRef<HTMLDivElement>(null)
 
-  // Ongoing downturn (id 99) if present
-  const ongoingDownturn = downturns.find((d) => d.isOngoing)
+  // Ongoing downturn (active) or recently recovered auto-detected event
+  const ongoingDownturn    = downturns.find((d) => d.isAutoDetected && d.isOngoing)
+  const recoveredDownturn  = downturns.find((d) => d.isAutoDetected && !d.isOngoing)
 
   const filteredAndSorted = useMemo(
     () =>
@@ -65,7 +66,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16 space-y-8">
 
-      {/* ── Ongoing event banner ───────────────────────────────────────── */}
+      {/* ── Ongoing event banner (active crisis — red) ─────────────────── */}
       {ongoingDownturn && (
         <section>
           <div className="rounded-xl border border-red-700/60 bg-red-950/30 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4">
@@ -104,6 +105,32 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
                 <p className="text-xs text-slate-400">Duration</p>
                 <p className="text-lg font-bold text-orange-400">{daysToMonths(ongoingDownturn.durationDays)}</p>
               </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Recovered banner (crisis resolved — green) ─────────────────── */}
+      {recoveredDownturn && !ongoingDownturn && (
+        <section>
+          <div className="rounded-xl border border-green-700/60 bg-green-950/30 p-4 sm:p-5 flex items-center gap-4">
+            <span className="relative flex h-4 w-4 flex-shrink-0">
+              <span className="relative inline-flex rounded-full h-4 w-4 bg-green-500" />
+            </span>
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <p className="text-green-300 font-bold text-base">Crisis Resolved</p>
+                <span className="badge bg-green-900/70 text-green-300 border border-green-700/50">RECOVERED</span>
+              </div>
+              <p className="text-sm text-slate-300 mt-0.5">
+                The {formatPercent(recoveredDownturn.drawdown)} drawdown from{' '}
+                <span className="text-slate-200 font-medium">{recoveredDownturn.peakValue.toLocaleString()}</span>
+                {' '}has been recovered. Market is no longer in crisis territory.
+              </p>
+            </div>
+            <div className="text-center px-4 py-2 bg-green-900/30 rounded-lg flex-shrink-0">
+              <p className="text-xs text-slate-400">Max Drawdown</p>
+              <p className="text-lg font-bold text-green-400">{formatPercent(recoveredDownturn.drawdown)}</p>
             </div>
           </div>
         </section>

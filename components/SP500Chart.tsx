@@ -69,10 +69,14 @@ function CustomTooltip({
               <span style={{ color: cfg.color }}>{cfg.label}</span>
               <span className="font-semibold text-white">
                 {isNormalized
-                  ? v.toFixed(1)
+                  ? `${v.toFixed(1)}`
                   : assetKey === 'btc'
                     ? `$${v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v.toFixed(0)}`
-                    : v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                    : assetKey === 'bonds'
+                      ? `$${v.toFixed(1)}`
+                      : assetKey === 'gold'
+                        ? `$${v.toLocaleString('en-US', { maximumFractionDigits: 0 })}`
+                        : v.toLocaleString('en-US', { maximumFractionDigits: 0 })}
               </span>
             </div>
           )
@@ -156,8 +160,9 @@ export default function SP500Chart({
   const [isNormalized, setIsNormalized] = useState(false)
   const [activeEco,    setActiveEco]    = useState<EcoIndicator | null>(null)
 
-  // ── Show BTC on a separate right axis when not normalized ─────────
-  const showBtcAxis = activeAssets.has('btc') && !isNormalized
+  // ── Separate right axes in linear (non-normalized) mode ───────────
+  const showBtcAxis   = activeAssets.has('btc')   && !isNormalized
+  const showBondsAxis = activeAssets.has('bonds')  && !isNormalized
 
   // ── Initial brush start ≈ 1987 ─────────────────────────────────────
   const defaultStartIndex = useMemo(() => {
@@ -186,9 +191,26 @@ export default function SP500Chart({
     return map
   }, [activeEco, ecoData])
 
-  // ── Display data: normalized to defaultStartIndex, no brushRange dep ─
+  // ── Index Mode: find first date where all active assets have data ─
+  const normalizeBase = useMemo(() => {
+    if (!isNormalized) return null
+    const activeKeys = Array.from(activeAssets)
+    for (const d of chartData) {
+      const allHaveData = activeKeys.every((k) => {
+        if (k === 'sp500') return d.close > 0
+        if (k === 'gold')  return (d.gold  ?? 0) > 0
+        if (k === 'bonds') return (d.bonds ?? 0) > 0
+        if (k === 'btc')   return (d.btc   ?? 0) > 0
+        return false
+      })
+      if (allHaveData) return d
+    }
+    return chartData[defaultStartIndex] ?? null
+  }, [isNormalized, activeAssets, chartData, defaultStartIndex])
+
+  // ── Display data: normalize per-asset to common base ──────────────
   const displayData = useMemo(() => {
-    const base = chartData[defaultStartIndex]
+    const base = normalizeBase ?? chartData[defaultStartIndex]
     return chartData.map((d) => {
       const eco = activeEco ? ecoMap.get(d.timestamp) ?? null : null
       if (!base || !isNormalized) {
@@ -196,10 +218,10 @@ export default function SP500Chart({
       }
       return {
         ...d,
-        sp500Norm: base.close > 0               ? (d.close  / base.close)  * 100 : null,
-        goldNorm:  base.gold  && base.gold  > 0  ? ((d.gold  ?? 0) / base.gold)  * 100 : null,
-        bondsNorm: base.bonds && base.bonds > 0  ? ((d.bonds ?? 0) / base.bonds) * 100 : null,
-        btcNorm:   base.btc   && base.btc   > 0  ? ((d.btc   ?? 0) / base.btc)   * 100 : null,
+        sp500Norm: base.close > 0              ? (d.close          / base.close)  * 100 : null,
+        goldNorm:  (base.gold  ?? 0) > 0        ? ((d.gold  ?? 0)  / base.gold!)  * 100 : null,
+        bondsNorm: (base.bonds ?? 0) > 0        ? ((d.bonds ?? 0)  / base.bonds!) * 100 : null,
+        btcNorm:   (base.btc   ?? 0) > 0        ? ((d.btc   ?? 0)  / base.btc!)   * 100 : null,
         eco,
       }
     })
@@ -222,14 +244,15 @@ export default function SP500Chart({
     [filteredDownturns, categoryFilter]
   )
 
-  const formatXAxis = useCallback((ts: number) => new Date(ts).getFullYear().toString(), [])
-  const formatMainY = useCallback((v: number) => {
+  const formatXAxis  = useCallback((ts: number) => new Date(ts).getFullYear().toString(), [])
+  const formatMainY  = useCallback((v: number) => {
     if (isNormalized) return `${v.toFixed(0)}`
     if (v >= 1000) return `${(v / 1000).toFixed(0)}k`
     return v.toString()
   }, [isNormalized])
-  const formatBtcY  = useCallback((v: number) => `$${v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}`, [])
-  const formatEcoY  = useCallback((v: number) => {
+  const formatBtcY   = useCallback((v: number) => `$${v >= 1000 ? Math.round(v / 1000) + 'k' : Math.round(v)}`, [])
+  const formatBondsY = useCallback((v: number) => `$${v.toFixed(0)}`, [])
+  const formatEcoY   = useCallback((v: number) => {
     if (!activeEco) return ''
     if (activeEco === 'oil_price') return `$${v.toFixed(0)}`
     if (activeEco === 'real_gdp')  return `$${(v / 1000).toFixed(0)}T`
@@ -256,8 +279,14 @@ export default function SP500Chart({
 
   const ecoDomain = activeEco ? ECO_META[activeEco].domain : [0, 10]
 
-  // Chart right margin: accommodate BTC axis and/or eco axis
-  const rightMargin = showBtcAxis && activeEco ? 110 : (showBtcAxis || activeEco) ? 58 : 15
+  // Chart right margin: accommodate BTC, Bonds and/or eco axes
+  const rightAxesCount = [showBtcAxis, showBondsAxis, !!activeEco].filter(Boolean).length
+  const rightMargin = rightAxesCount === 0 ? 15 : rightAxesCount === 1 ? 58 : rightAxesCount === 2 ? 112 : 165
+
+  // Date label for index mode base
+  const normalizeBaseLabel = normalizeBase
+    ? new Date(normalizeBase.timestamp).toLocaleDateString('en-US', { year: 'numeric', month: 'short' })
+    : null
 
   return (
     <div className="card p-4 sm:p-6">
@@ -308,12 +337,17 @@ export default function SP500Chart({
         ))}
         {showBtcAxis && (
           <span className="text-xs text-orange-400/80 self-center ml-1">
-            Bitcoin on right axis (USD)
+            BTC on right axis (USD)
           </span>
         )}
-        {isNormalized && activeAssets.size > 1 && (
+        {showBondsAxis && (
+          <span className="text-xs text-green-400/80 self-center ml-1">
+            Bonds on right axis (USD)
+          </span>
+        )}
+        {isNormalized && activeAssets.size > 1 && normalizeBaseLabel && (
           <span className="text-xs text-indigo-400 self-center ml-1">
-            Normalized to 100 at chart start
+            Base = 100 at {normalizeBaseLabel} (first date all assets have data)
           </span>
         )}
       </div>
@@ -425,7 +459,21 @@ export default function SP500Chart({
             />
           )}
 
-          {/* Right axis: economic indicator (offset if BTC axis also present) */}
+          {/* Right axis: Bonds (TLT) when active and not normalized — scale ~$80-$200 */}
+          {showBondsAxis && (
+            <YAxis
+              yAxisId="bonds"
+              orientation="right"
+              domain={[60, 'auto']}
+              tickFormatter={formatBondsY}
+              stroke={ASSETS.bonds.color}
+              tick={{ fill: ASSETS.bonds.color, fontSize: 10 }}
+              tickLine={false}
+              width={46}
+            />
+          )}
+
+          {/* Right axis: economic indicator */}
           {activeEco && (
             <YAxis
               yAxisId="eco"
@@ -510,7 +558,7 @@ export default function SP500Chart({
             name="S&P 500"
           />
 
-          {/* Gold */}
+          {/* Gold — solid line, same axis as S&P (comparable price scale) */}
           {activeAssets.has('gold') && (
             <Line
               yAxisId="main"
@@ -521,15 +569,14 @@ export default function SP500Chart({
               dot={false}
               isAnimationActive={false}
               connectNulls={false}
-              strokeDasharray={isNormalized ? undefined : '5 2'}
               name="Gold"
             />
           )}
 
-          {/* Bonds */}
+          {/* Bonds — dedicated right axis in linear mode (TLT ~$80-200, much smaller than S&P) */}
           {activeAssets.has('bonds') && (
             <Line
-              yAxisId="main"
+              yAxisId={isNormalized ? 'main' : 'bonds'}
               type="monotone"
               dataKey={isNormalized ? 'bondsNorm' : 'bonds'}
               stroke={ASSETS.bonds.color}
@@ -537,12 +584,11 @@ export default function SP500Chart({
               dot={false}
               isAnimationActive={false}
               connectNulls={false}
-              strokeDasharray={isNormalized ? undefined : '5 2'}
               name="Bonds (TLT)"
             />
           )}
 
-          {/* Bitcoin — uses BTC axis in linear mode, main axis in index mode */}
+          {/* Bitcoin — dedicated right axis in linear mode */}
           {activeAssets.has('btc') && (
             <Line
               yAxisId={isNormalized ? 'main' : 'btc'}
@@ -553,7 +599,6 @@ export default function SP500Chart({
               dot={false}
               isAnimationActive={false}
               connectNulls={false}
-              strokeDasharray={isNormalized ? undefined : '5 2'}
               name="Bitcoin"
             />
           )}
@@ -588,7 +633,7 @@ export default function SP500Chart({
 
       {!isNormalized && activeAssets.size > 1 && (
         <p className="text-xs text-slate-500 mt-2 text-center">
-          Tip: enable <strong className="text-indigo-400">Index Mode</strong> to compare all assets on a single scale
+          Tip: enable <strong className="text-indigo-400">Index Mode</strong> to compare all assets on a single normalized scale
         </p>
       )}
     </div>
