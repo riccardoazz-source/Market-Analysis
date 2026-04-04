@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { fetchMarketData } from '@/lib/sp500'
 import { DOWNTURNS, computeStats, detectOngoingDownturn } from '@/lib/downturns'
-import { getEcoDataAsync, getEcoData } from '@/lib/economics'
+import { getEcoDataAsync } from '@/lib/economics'
 import Dashboard from '@/components/Dashboard'
 import ThemeToggle from '@/components/ThemeToggle'
 import { EcoIndicator } from '@/lib/types'
@@ -11,24 +11,31 @@ export const revalidate = 3600
 export default async function Home() {
   const marketData = await fetchMarketData()
 
-  // Enrich auto-detection with current macro context (use static for speed)
-  const fedStaticData  = getEcoData('fed_rate')
-  const capeStaticData = getEcoData('pe_ratio')
-  const currentFedRate = fedStaticData[fedStaticData.length - 1]?.value
-  const currentCape    = capeStaticData[capeStaticData.length - 1]?.value
+  // Fetch live Fed rate + CAPE first so auto-detection uses real-time macro context
+  const [liveFedData, liveCapeData] = await Promise.all([
+    getEcoDataAsync('fed_rate'),
+    getEcoDataAsync('pe_ratio'),
+  ])
+  const currentFedRate = liveFedData[liveFedData.length - 1]?.value
+  const currentCape    = liveCapeData[liveCapeData.length - 1]?.value
 
   const ongoingDownturn = detectOngoingDownturn(marketData, currentFedRate, currentCape)
   const allDownturns    = ongoingDownturn ? [...DOWNTURNS, ongoingDownturn] : DOWNTURNS
   const stats           = computeStats(allDownturns)
 
-  // Fetch all eco data — live where available (FRED/Yahoo), static fallback otherwise
-  const ecoIndicators: EcoIndicator[] = [
-    'fed_rate', 'pe_ratio', 'inflation_cpi', 'oil_price', 'real_gdp',
-  ]
-  const ecoDataEntries = await Promise.all(
-    ecoIndicators.map(async (ind) => [ind, await getEcoDataAsync(ind)] as const)
-  )
-  const ecoData = Object.fromEntries(ecoDataEntries) as Record<EcoIndicator, ReturnType<typeof getEcoData>>
+  // Fetch remaining eco data (reuse already-fetched Fed and CAPE)
+  const [inflationData, oilData, gdpData] = await Promise.all([
+    getEcoDataAsync('inflation_cpi'),
+    getEcoDataAsync('oil_price'),
+    getEcoDataAsync('real_gdp'),
+  ])
+  const ecoData: Record<EcoIndicator, Awaited<ReturnType<typeof getEcoDataAsync>>> = {
+    fed_rate:      liveFedData,
+    pe_ratio:      liveCapeData,
+    inflation_cpi: inflationData,
+    oil_price:     oilData,
+    real_gdp:      gdpData,
+  }
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>

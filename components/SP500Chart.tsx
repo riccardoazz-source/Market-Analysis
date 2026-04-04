@@ -558,17 +558,17 @@ export default function SP500Chart({
             name="S&P 500"
           />
 
-          {/* Gold — solid line, same axis as S&P (comparable price scale) */}
+          {/* Gold — solid continuous line; connectNulls bridges any sparse data gaps */}
           {activeAssets.has('gold') && (
             <Line
               yAxisId="main"
               type="monotone"
               dataKey={isNormalized ? 'goldNorm' : 'gold'}
               stroke={ASSETS.gold.color}
-              strokeWidth={1.5}
+              strokeWidth={1.8}
               dot={false}
               isAnimationActive={false}
-              connectNulls={false}
+              connectNulls
               name="Gold"
             />
           )}
@@ -580,10 +580,10 @@ export default function SP500Chart({
               type="monotone"
               dataKey={isNormalized ? 'bondsNorm' : 'bonds'}
               stroke={ASSETS.bonds.color}
-              strokeWidth={1.5}
+              strokeWidth={1.8}
               dot={false}
               isAnimationActive={false}
-              connectNulls={false}
+              connectNulls
               name="Bonds (TLT)"
             />
           )}
@@ -595,10 +595,10 @@ export default function SP500Chart({
               type="monotone"
               dataKey={isNormalized ? 'btcNorm' : 'btc'}
               stroke={ASSETS.btc.color}
-              strokeWidth={1.5}
+              strokeWidth={1.8}
               dot={false}
               isAnimationActive={false}
-              connectNulls={false}
+              connectNulls
               name="Bitcoin"
             />
           )}

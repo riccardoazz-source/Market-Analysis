@@ -474,9 +474,10 @@ export function detectOngoingDownturn(
     : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
 
   // Signal-based category inference from actual market/macro data (no year heuristics)
+  // Thresholds are calibrated to current macro norms: neutral Fed ~2.5%, hist CAPE avg ~15.9x
   const uniqueCats: DownturnCategory[] = []
-  if (currentFedRate !== undefined && currentFedRate > 4.0) uniqueCats.push('inflation_rates')
-  if (currentCape    !== undefined && currentCape    > 35)  uniqueCats.push('market_structure')
+  if (currentFedRate !== undefined && currentFedRate > 2.5) uniqueCats.push('inflation_rates')
+  if (currentCape    !== undefined && currentCape    > 25)  uniqueCats.push('market_structure')
   if (drawdownPct < -20)                                     uniqueCats.push('credit_crisis')
 
   // Macro context snippet for description
