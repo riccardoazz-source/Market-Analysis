@@ -1,5 +1,4 @@
 import { DataPoint, Downturn, DownturnCategory, SP500Stats } from './types'
-// DownturnCategory is used in detectOngoingDownturn for inferred categories
 import { formatDateShort } from './utils'
 
 function daysBetween(d1: string, d2: string): number {
@@ -474,32 +473,9 @@ export function detectOngoingDownturn(
     ? `Ongoing ${typeLabel}`
     : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
 
-  // Infer likely macro categories from timing and current conditions
-  const inferredCategories: DownturnCategory[] = []
-  const peakYear = parseInt(peak.date.substring(0, 4))
-
-  // Geopolitical — post-2022 ongoing conflicts (Russia-Ukraine, Middle East, Trade Wars)
-  if (peakYear >= 2022) inferredCategories.push('geopolitical')
-
-  // War — Russia-Ukraine started Feb 2022 and is ongoing; trade war from 2025
-  if (peakYear >= 2022) inferredCategories.push('war')
-
-  // Political — US tariff/trade war context from 2025
-  if (peakYear >= 2025) inferredCategories.push('political')
-
-  // Inflation / rate hikes — elevated Fed rate environment
-  if (currentFedRate !== undefined && currentFedRate > 3.5) inferredCategories.push('inflation_rates')
-  if (peakYear === 2022 || peakYear === 2023) inferredCategories.push('inflation_rates')
-
-  // Oil shock — if current oil context is relevant (2022-2023 energy crisis)
-  if (peakYear >= 2022 && peakYear <= 2024) inferredCategories.push('oil_shock')
-  // de-duplicate
-  const seen = new Set<string>()
-  const uniqueCats = inferredCategories.filter((c) => {
-    if (seen.has(c)) return false
-    seen.add(c)
-    return true
-  }) as DownturnCategory[]
+  // Categories are left empty for auto-detected events — full cause analysis
+  // is added manually once an event concludes. Macro context is surfaced in description.
+  const uniqueCats: DownturnCategory[] = []
 
   // Macro context snippet for description
   const macroContext: string[] = []

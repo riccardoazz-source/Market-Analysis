@@ -23,7 +23,7 @@ export default async function Home() {
 
   // Fetch all eco data — live where available (FRED/Yahoo), static fallback otherwise
   const ecoIndicators: EcoIndicator[] = [
-    'fed_rate', 'pe_ratio', 'sp_concentration', 'inflation_cpi', 'oil_price', 'real_gdp',
+    'fed_rate', 'pe_ratio', 'inflation_cpi', 'oil_price', 'real_gdp',
   ]
   const ecoDataEntries = await Promise.all(
     ecoIndicators.map(async (ind) => [ind, await getEcoDataAsync(ind)] as const)

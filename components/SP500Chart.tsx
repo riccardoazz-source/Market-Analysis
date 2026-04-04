@@ -90,7 +90,9 @@ function CustomTooltip({
             <span className="font-semibold text-white">
               {activeEco === 'oil_price'
                 ? `$${v.toFixed(0)}/bbl`
-                : `${v.toFixed(activeEco === 'fed_rate' ? 2 : 1)}${meta.unit}`}
+                : activeEco === 'real_gdp'
+                  ? `$${(v / 1000).toFixed(1)}T`
+                  : `${v.toFixed(activeEco === 'fed_rate' ? 2 : 1)}${meta.unit}`}
             </span>
           </div>
         )
@@ -230,6 +232,7 @@ export default function SP500Chart({
   const formatEcoY  = useCallback((v: number) => {
     if (!activeEco) return ''
     if (activeEco === 'oil_price') return `$${v.toFixed(0)}`
+    if (activeEco === 'real_gdp')  return `$${(v / 1000).toFixed(0)}T`
     return `${v.toFixed(activeEco === 'fed_rate' ? 1 : 0)}${ECO_META[activeEco].unit}`
   }, [activeEco])
 

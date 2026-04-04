@@ -95,7 +95,7 @@ export interface EcoPoint {
   value: number
 }
 
-export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'sp_concentration' | 'inflation_cpi' | 'oil_price' | 'real_gdp'
+export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'inflation_cpi' | 'oil_price' | 'real_gdp'
 
 export const ECO_META: Record<EcoIndicator, {
   label: string
@@ -121,14 +121,6 @@ export const ECO_META: Record<EcoIndicator, {
     description: 'Cyclically Adjusted P/E — 10-yr avg inflation-adjusted earnings',
     domain: [5, 50],
   },
-  sp_concentration: {
-    label: 'S&P 500 Top-10 Weight',
-    shortLabel: 'Concentration',
-    color: '#38bdf8',
-    unit: '%',
-    description: 'Percentage of S&P 500 market cap held by the top 10 stocks',
-    domain: [10, 45],
-  },
   inflation_cpi: {
     label: 'US Inflation (CPI YoY)',
     shortLabel: 'CPI Inflation',
@@ -146,11 +138,11 @@ export const ECO_META: Record<EcoIndicator, {
     domain: [0, 160],
   },
   real_gdp: {
-    label: 'US Real GDP Growth',
-    shortLabel: 'GDP Growth',
+    label: 'US Real GDP (Inflation-Adjusted)',
+    shortLabel: 'Real GDP',
     color: '#34d399',
-    unit: '%',
-    description: 'US Real GDP year-over-year growth rate (inflation-adjusted, FRED)',
-    domain: [-12, 10],
+    unit: 'B',
+    description: 'US Real GDP — chained 2017 dollars, billions (FRED GDPC1, quarterly)',
+    domain: [7500, 24000],
   },
 }

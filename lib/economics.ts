@@ -109,26 +109,6 @@ const PE_RATIO_RAW: [string, number][] = [
   ['2026-04-01', 27.5],
 ]
 
-// ─── S&P 500 Top-10 Concentration (%) ────────────────────────────────────────
-
-const CONCENTRATION_RAW: [string, number][] = [
-  ['1990-01-01', 19.8], ['1993-01-01', 20.5], ['1995-01-01', 21.8],
-  ['1998-01-01', 23.5], ['1999-01-01', 24.8], ['2000-03-01', 25.4],
-  ['2001-01-01', 23.8], ['2002-10-01', 21.0], ['2003-01-01', 20.5],
-  ['2005-01-01', 20.2], ['2008-01-01', 21.5], ['2009-01-01', 20.8],
-  ['2010-01-01', 20.3], ['2012-01-01', 19.8], ['2013-01-01', 18.9],
-  ['2015-01-01', 18.2], ['2015-05-01', 18.5], ['2016-01-01', 19.0],
-  ['2018-01-01', 21.3], ['2018-09-01', 22.1], ['2018-12-01', 21.6],
-  ['2019-01-01', 22.0], ['2020-01-01', 25.4], ['2020-03-01', 26.8],
-  ['2020-08-01', 28.5], ['2020-12-01', 28.4], ['2021-06-01', 29.3],
-  ['2021-12-01', 29.7], ['2022-01-01', 30.2], ['2022-10-01', 26.8],
-  ['2022-12-01', 27.3], ['2023-06-01', 32.0], ['2023-12-01', 33.8],
-  ['2024-01-01', 33.5], ['2024-03-01', 34.8], ['2024-06-01', 35.3],
-  ['2024-09-01', 35.8], ['2024-12-01', 36.5], ['2025-01-01', 37.1],
-  ['2025-02-01', 36.8], ['2025-04-01', 34.9], ['2025-08-01', 35.5],
-  ['2025-12-01', 35.0], ['2026-01-01', 34.5], ['2026-04-01', 33.0],
-]
-
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 /**
@@ -182,32 +162,49 @@ function interpolate(raw: [string, number][], allDates: string[]): EcoPoint[] {
   return result
 }
 
-// ─── US Real GDP YoY Growth (static quarterly fallback) ──────────────────────
+// ─── US Real GDP level (billions of chained 2017 dollars, quarterly, FRED GDPC1) ─
 
 const REAL_GDP_STATIC: [string, number][] = [
-  ['1987-01-01', 3.2],  ['1987-07-01', 3.7],  ['1988-01-01', 3.9],  ['1988-07-01', 4.4],
-  ['1989-01-01', 3.5],  ['1989-07-01', 2.6],  ['1990-01-01', 1.8],  ['1990-07-01', 0.4],
-  ['1991-01-01', -0.4], ['1991-07-01', -0.3], ['1992-01-01', 3.3],  ['1992-07-01', 3.8],
-  ['1993-01-01', 1.9],  ['1993-07-01', 2.8],  ['1994-01-01', 3.5],  ['1994-07-01', 4.3],
-  ['1995-01-01', 2.7],  ['1995-07-01', 2.4],  ['1996-01-01', 3.8],  ['1996-07-01', 4.0],
-  ['1997-01-01', 4.5],  ['1997-07-01', 4.8],  ['1998-01-01', 4.2],  ['1998-07-01', 4.5],
-  ['1999-01-01', 4.8],  ['1999-07-01', 5.0],  ['2000-01-01', 4.1],  ['2000-07-01', 3.2],
-  ['2001-01-01', 1.0],  ['2001-07-01', 0.3],  ['2002-01-01', 2.1],  ['2002-07-01', 1.9],
-  ['2003-01-01', 2.2],  ['2003-07-01', 3.8],  ['2004-01-01', 3.8],  ['2004-07-01', 3.6],
-  ['2005-01-01', 3.6],  ['2005-07-01', 3.4],  ['2006-01-01', 2.9],  ['2006-07-01', 2.8],
-  ['2007-01-01', 1.9],  ['2007-07-01', 2.1],  ['2008-01-01', 0.8],  ['2008-07-01', -0.5],
-  ['2009-01-01', -3.3], ['2009-07-01', -2.6], ['2010-01-01', 2.3],  ['2010-07-01', 2.9],
-  ['2011-01-01', 1.6],  ['2011-07-01', 1.4],  ['2012-01-01', 2.2],  ['2012-07-01', 2.5],
-  ['2013-01-01', 1.7],  ['2013-07-01', 2.3],  ['2014-01-01', 2.4],  ['2014-07-01', 2.7],
-  ['2015-01-01', 3.4],  ['2015-07-01', 2.4],  ['2016-01-01', 1.2],  ['2016-07-01', 1.7],
-  ['2017-01-01', 2.0],  ['2017-07-01', 2.3],  ['2018-01-01', 2.9],  ['2018-07-01', 3.2],
-  ['2019-01-01', 2.3],  ['2019-07-01', 2.1],  ['2020-01-01', 0.3],  ['2020-04-01', -9.0],
-  ['2020-07-01', -2.8], ['2020-10-01', -2.3], ['2021-01-01', 0.5],  ['2021-04-01', 12.2],
-  ['2021-07-01', 5.0],  ['2021-10-01', 5.5],  ['2022-01-01', 3.5],  ['2022-04-01', 2.0],
-  ['2022-07-01', 1.8],  ['2022-10-01', 0.9],  ['2023-01-01', 1.8],  ['2023-04-01', 2.4],
-  ['2023-07-01', 2.9],  ['2023-10-01', 3.1],  ['2024-01-01', 2.8],  ['2024-04-01', 2.5],
-  ['2024-07-01', 2.7],  ['2024-10-01', 2.4],  ['2025-01-01', 1.8],  ['2025-04-01', 1.2],
-  ['2025-07-01', 1.5],  ['2025-10-01', 1.3],  ['2026-01-01', 1.4],  ['2026-04-01', 1.2],
+  ['1987-01-01', 8086],  ['1987-04-01', 8196],  ['1987-07-01', 8304],  ['1987-10-01', 8408],
+  ['1988-01-01', 8472],  ['1988-04-01', 8598],  ['1988-07-01', 8685],  ['1988-10-01', 8773],
+  ['1989-01-01', 8847],  ['1989-04-01', 8943],  ['1989-07-01', 9000],  ['1989-10-01', 9053],
+  ['1990-01-01', 9082],  ['1990-04-01', 9098],  ['1990-07-01', 9078],  ['1990-10-01', 8970],
+  ['1991-01-01', 8948],  ['1991-04-01', 8964],  ['1991-07-01', 9054],  ['1991-10-01', 9147],
+  ['1992-01-01', 9246],  ['1992-04-01', 9331],  ['1992-07-01', 9428],  ['1992-10-01', 9565],
+  ['1993-01-01', 9521],  ['1993-04-01', 9617],  ['1993-07-01', 9699],  ['1993-10-01', 9844],
+  ['1994-01-01', 9895],  ['1994-04-01', 10049], ['1994-07-01', 10177], ['1994-10-01', 10305],
+  ['1995-01-01', 10314], ['1995-04-01', 10362], ['1995-07-01', 10506], ['1995-10-01', 10567],
+  ['1996-01-01', 10699], ['1996-04-01', 10882], ['1996-07-01', 10992], ['1996-10-01', 11089],
+  ['1997-01-01', 11279], ['1997-04-01', 11450], ['1997-07-01', 11559], ['1997-10-01', 11720],
+  ['1998-01-01', 11814], ['1998-04-01', 11971], ['1998-07-01', 12097], ['1998-10-01', 12271],
+  ['1999-01-01', 12378], ['1999-04-01', 12530], ['1999-07-01', 12680], ['1999-10-01', 12822],
+  ['2000-01-01', 12924], ['2000-04-01', 12997], ['2000-07-01', 13033], ['2000-10-01', 12995],
+  ['2001-01-01', 13002], ['2001-04-01', 12958], ['2001-07-01', 12948], ['2001-10-01', 12961],
+  ['2002-01-01', 13060], ['2002-04-01', 13134], ['2002-07-01', 13205], ['2002-10-01', 13298],
+  ['2003-01-01', 13323], ['2003-04-01', 13444], ['2003-07-01', 13629], ['2003-10-01', 13872],
+  ['2004-01-01', 13908], ['2004-04-01', 14010], ['2004-07-01', 14093], ['2004-10-01', 14253],
+  ['2005-01-01', 14329], ['2005-04-01', 14465], ['2005-07-01', 14567], ['2005-10-01', 14693],
+  ['2006-01-01', 14715], ['2006-04-01', 14789], ['2006-07-01', 14863], ['2006-10-01', 14966],
+  ['2007-01-01', 15006], ['2007-04-01', 15082], ['2007-07-01', 15129], ['2007-10-01', 15241],
+  ['2008-01-01', 14991], ['2008-04-01', 15025], ['2008-07-01', 14855], ['2008-10-01', 14578],
+  ['2009-01-01', 14355], ['2009-04-01', 14313], ['2009-07-01', 14443], ['2009-10-01', 14619],
+  ['2010-01-01', 14711], ['2010-04-01', 14854], ['2010-07-01', 14941], ['2010-10-01', 15065],
+  ['2011-01-01', 15020], ['2011-04-01', 15052], ['2011-07-01', 15176], ['2011-10-01', 15327],
+  ['2012-01-01', 15427], ['2012-04-01', 15508], ['2012-07-01', 15597], ['2012-10-01', 15703],
+  ['2013-01-01', 15762], ['2013-04-01', 15901], ['2013-07-01', 15981], ['2013-10-01', 16154],
+  ['2014-01-01', 15989], ['2014-04-01', 16225], ['2014-07-01', 16369], ['2014-10-01', 16547],
+  ['2015-01-01', 16616], ['2015-04-01', 16715], ['2015-07-01', 16795], ['2015-10-01', 16878],
+  ['2016-01-01', 16849], ['2016-04-01', 16966], ['2016-07-01', 17084], ['2016-10-01', 17185],
+  ['2017-01-01', 17265], ['2017-04-01', 17434], ['2017-07-01', 17617], ['2017-10-01', 17821],
+  ['2018-01-01', 17895], ['2018-04-01', 18073], ['2018-07-01', 18323], ['2018-10-01', 18498],
+  ['2019-01-01', 18607], ['2019-04-01', 18774], ['2019-07-01', 19024], ['2019-10-01', 19254],
+  ['2020-01-01', 18951], ['2020-04-01', 17258], ['2020-07-01', 18596], ['2020-10-01', 18794],
+  ['2021-01-01', 19087], ['2021-04-01', 19477], ['2021-07-01', 19744], ['2021-10-01', 20015],
+  ['2022-01-01', 19735], ['2022-04-01', 19923], ['2022-07-01', 20189], ['2022-10-01', 20510],
+  ['2023-01-01', 20715], ['2023-04-01', 21006], ['2023-07-01', 21364], ['2023-10-01', 21675],
+  ['2024-01-01', 21905], ['2024-04-01', 22111], ['2024-07-01', 22465], ['2024-10-01', 22754],
+  ['2025-01-01', 22900], ['2025-04-01', 23050], ['2025-07-01', 23200], ['2025-10-01', 23350],
+  ['2026-01-01', 23500],
 ]
 
 // ─── US CPI Inflation (YoY %) ─────────────────────────────────────────────────
@@ -307,12 +304,11 @@ function getMonthlyDates(): string[] {
 export function getEcoData(indicator: EcoIndicator): EcoPoint[] {
   const dates = getMonthlyDates()
   switch (indicator) {
-    case 'fed_rate':        return forwardFill(FED_RATE_RAW, dates)
-    case 'pe_ratio':        return interpolate(PE_RATIO_RAW, dates)
-    case 'sp_concentration':return interpolate(CONCENTRATION_RAW, dates)
-    case 'inflation_cpi':   return interpolate(CPI_YOY_RAW, dates)
-    case 'oil_price':       return interpolate(OIL_PRICE_RAW, dates)
-    case 'real_gdp':        return interpolate(REAL_GDP_STATIC, dates)
+    case 'fed_rate':      return forwardFill(FED_RATE_RAW, dates)
+    case 'pe_ratio':      return interpolate(PE_RATIO_RAW, dates)
+    case 'inflation_cpi': return interpolate(CPI_YOY_RAW, dates)
+    case 'oil_price':     return interpolate(OIL_PRICE_RAW, dates)
+    case 'real_gdp':      return interpolate(REAL_GDP_STATIC, dates)
   }
 }
 
@@ -368,18 +364,65 @@ async function fetchLiveCPI(): Promise<EcoPoint[]> {
   return result
 }
 
-/** Fetch live Real GDP from FRED (GDPC1 quarterly) and compute YoY % */
+/** Fetch live Real GDP from FRED (GDPC1 quarterly) — returns raw level in billions of chained 2017 dollars */
 async function fetchLiveRealGDP(): Promise<EcoPoint[]> {
   const raw     = await fetchFREDCSV('GDPC1')
   const entries = Array.from(raw.entries()).sort((a, b) => a[0].localeCompare(b[0]))
-  const result: EcoPoint[] = []
-  for (let i = 4; i < entries.length; i++) {
-    const [date, curr] = entries[i]
-    const [, prev]     = entries[i - 4]
-    const yoy = ((curr / prev) - 1) * 100
-    result.push({ date, timestamp: new Date(date).getTime(), value: Math.round(yoy * 10) / 10 })
+  return entries.map(([date, value]) => ({
+    date,
+    timestamp: new Date(date).getTime(),
+    value: Math.round(value),
+  }))
+}
+
+/** Fetch live Shiller CAPE P/E from Yale's public CSV */
+async function fetchLiveCAPE(): Promise<EcoPoint[]> {
+  const url = 'https://shiller.econ.yale.edu/data/ie_data.csv'
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; market-analysis-app/1.0)',
+      Accept: 'text/csv,text/plain',
+    },
+    next: { revalidate: 86400 },
+  })
+  if (!res.ok) throw new Error(`Shiller CSV ${res.status}`)
+  const text  = await res.text()
+  const lines = text.split('\n').map((l) => l.trim()).filter(Boolean)
+
+  // Find header row (first col = "Date") and locate CAPE column
+  let headerIdx = -1
+  let capeIdx   = -1
+  for (let i = 0; i < Math.min(20, lines.length); i++) {
+    const cols = lines[i].split(',')
+    if (/^date$/i.test(cols[0]?.trim() ?? '')) {
+      headerIdx = i
+      capeIdx   = cols.findIndex((c) => /cape|p\/e10|pe10/i.test(c.trim()))
+      break
+    }
   }
-  return result
+  // Fallback: column 12 is CAPE in the standard Shiller layout
+  if (headerIdx < 0) { headerIdx = 7; capeIdx = 12 }
+  if (capeIdx   < 0)   capeIdx = 12
+
+  const result: EcoPoint[] = []
+  for (let i = headerIdx + 1; i < lines.length; i++) {
+    const cols    = lines[i].split(',')
+    const dateStr = cols[0]?.trim() ?? ''
+    const capeStr = cols[capeIdx]?.trim() ?? ''
+    if (!dateStr || !capeStr || capeStr === '.') continue
+
+    // Date format: YYYY.MM or YYYY.M
+    const m = dateStr.match(/^(\d{4})\.(\d{1,2})/)
+    if (!m) continue
+    const date = `${m[1]}-${m[2].padStart(2, '0')}-01`
+    if (date < '1987-01-01') continue
+
+    const cape = parseFloat(capeStr)
+    if (!isNaN(cape) && cape > 0 && cape < 100) {
+      result.push({ date, timestamp: new Date(date).getTime(), value: Math.round(cape * 10) / 10 })
+    }
+  }
+  return result.sort((a, b) => a.date.localeCompare(b.date))
 }
 
 /** Fetch live WTI Crude Oil from Yahoo Finance (CL=F) */
@@ -426,17 +469,14 @@ export async function getEcoDataAsync(indicator: EcoIndicator): Promise<EcoPoint
   const staticFallback = getEcoData(indicator)
   try {
     switch (indicator) {
-      case 'fed_rate':    return await fetchLiveFedRate()
+      case 'fed_rate':      return await fetchLiveFedRate()
       case 'inflation_cpi': return await fetchLiveCPI()
-      case 'real_gdp':    return await fetchLiveRealGDP()
-      case 'oil_price':   return await fetchLiveOil()
-      // CAPE and Concentration have no reliable free live API
-      case 'pe_ratio':
-      case 'sp_concentration':
-        return staticFallback
+      case 'real_gdp':      return await fetchLiveRealGDP()
+      case 'oil_price':     return await fetchLiveOil()
+      case 'pe_ratio':      return await fetchLiveCAPE()
     }
   } catch {
-    // Network unavailable, rate-limited, or CORS — return static data
+    // Network unavailable, rate-limited, or unexpected format — return static data
     return staticFallback
   }
 }
