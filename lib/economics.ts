@@ -182,6 +182,34 @@ function interpolate(raw: [string, number][], allDates: string[]): EcoPoint[] {
   return result
 }
 
+// ─── US Real GDP YoY Growth (static quarterly fallback) ──────────────────────
+
+const REAL_GDP_STATIC: [string, number][] = [
+  ['1987-01-01', 3.2],  ['1987-07-01', 3.7],  ['1988-01-01', 3.9],  ['1988-07-01', 4.4],
+  ['1989-01-01', 3.5],  ['1989-07-01', 2.6],  ['1990-01-01', 1.8],  ['1990-07-01', 0.4],
+  ['1991-01-01', -0.4], ['1991-07-01', -0.3], ['1992-01-01', 3.3],  ['1992-07-01', 3.8],
+  ['1993-01-01', 1.9],  ['1993-07-01', 2.8],  ['1994-01-01', 3.5],  ['1994-07-01', 4.3],
+  ['1995-01-01', 2.7],  ['1995-07-01', 2.4],  ['1996-01-01', 3.8],  ['1996-07-01', 4.0],
+  ['1997-01-01', 4.5],  ['1997-07-01', 4.8],  ['1998-01-01', 4.2],  ['1998-07-01', 4.5],
+  ['1999-01-01', 4.8],  ['1999-07-01', 5.0],  ['2000-01-01', 4.1],  ['2000-07-01', 3.2],
+  ['2001-01-01', 1.0],  ['2001-07-01', 0.3],  ['2002-01-01', 2.1],  ['2002-07-01', 1.9],
+  ['2003-01-01', 2.2],  ['2003-07-01', 3.8],  ['2004-01-01', 3.8],  ['2004-07-01', 3.6],
+  ['2005-01-01', 3.6],  ['2005-07-01', 3.4],  ['2006-01-01', 2.9],  ['2006-07-01', 2.8],
+  ['2007-01-01', 1.9],  ['2007-07-01', 2.1],  ['2008-01-01', 0.8],  ['2008-07-01', -0.5],
+  ['2009-01-01', -3.3], ['2009-07-01', -2.6], ['2010-01-01', 2.3],  ['2010-07-01', 2.9],
+  ['2011-01-01', 1.6],  ['2011-07-01', 1.4],  ['2012-01-01', 2.2],  ['2012-07-01', 2.5],
+  ['2013-01-01', 1.7],  ['2013-07-01', 2.3],  ['2014-01-01', 2.4],  ['2014-07-01', 2.7],
+  ['2015-01-01', 3.4],  ['2015-07-01', 2.4],  ['2016-01-01', 1.2],  ['2016-07-01', 1.7],
+  ['2017-01-01', 2.0],  ['2017-07-01', 2.3],  ['2018-01-01', 2.9],  ['2018-07-01', 3.2],
+  ['2019-01-01', 2.3],  ['2019-07-01', 2.1],  ['2020-01-01', 0.3],  ['2020-04-01', -9.0],
+  ['2020-07-01', -2.8], ['2020-10-01', -2.3], ['2021-01-01', 0.5],  ['2021-04-01', 12.2],
+  ['2021-07-01', 5.0],  ['2021-10-01', 5.5],  ['2022-01-01', 3.5],  ['2022-04-01', 2.0],
+  ['2022-07-01', 1.8],  ['2022-10-01', 0.9],  ['2023-01-01', 1.8],  ['2023-04-01', 2.4],
+  ['2023-07-01', 2.9],  ['2023-10-01', 3.1],  ['2024-01-01', 2.8],  ['2024-04-01', 2.5],
+  ['2024-07-01', 2.7],  ['2024-10-01', 2.4],  ['2025-01-01', 1.8],  ['2025-04-01', 1.2],
+  ['2025-07-01', 1.5],  ['2025-10-01', 1.3],  ['2026-01-01', 1.4],  ['2026-04-01', 1.2],
+]
+
 // ─── US CPI Inflation (YoY %) ─────────────────────────────────────────────────
 
 const CPI_YOY_RAW: [string, number][] = [
@@ -275,6 +303,7 @@ function getMonthlyDates(): string[] {
   return dates
 }
 
+/** Static fallback (sync) */
 export function getEcoData(indicator: EcoIndicator): EcoPoint[] {
   const dates = getMonthlyDates()
   switch (indicator) {
@@ -283,5 +312,131 @@ export function getEcoData(indicator: EcoIndicator): EcoPoint[] {
     case 'sp_concentration':return interpolate(CONCENTRATION_RAW, dates)
     case 'inflation_cpi':   return interpolate(CPI_YOY_RAW, dates)
     case 'oil_price':       return interpolate(OIL_PRICE_RAW, dates)
+    case 'real_gdp':        return interpolate(REAL_GDP_STATIC, dates)
+  }
+}
+
+// ─── Live data fetchers ───────────────────────────────────────────────────────
+
+/**
+ * Fetch a FRED CSV series (no API key required for public series).
+ * Returns a date→value map.
+ */
+async function fetchFREDCSV(seriesId: string): Promise<Map<string, number>> {
+  const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (compatible; market-analysis-app/1.0)',
+      Accept: 'text/csv',
+    },
+    next: { revalidate: 86400 }, // daily
+  })
+  if (!res.ok) throw new Error(`FRED ${res.status} for ${seriesId}`)
+  const text  = await res.text()
+  const lines = text.trim().split('\n').slice(1)
+  const map   = new Map<string, number>()
+  for (const line of lines) {
+    const [date, val] = line.split(',')
+    const v = parseFloat(val?.trim() ?? '')
+    if (!isNaN(v)) map.set(date.trim(), v)
+  }
+  return map
+}
+
+/** Fetch live Fed Funds Rate from FRED (FEDFUNDS monthly series) */
+async function fetchLiveFedRate(): Promise<EcoPoint[]> {
+  const raw = await fetchFREDCSV('FEDFUNDS')
+  const entries = Array.from(raw.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  return entries.map(([date, value]) => ({
+    date,
+    timestamp: new Date(date).getTime(),
+    value: Math.round(value * 100) / 100,
+  }))
+}
+
+/** Fetch live CPI from FRED (CPIAUCSL) and compute YoY % */
+async function fetchLiveCPI(): Promise<EcoPoint[]> {
+  const raw     = await fetchFREDCSV('CPIAUCSL')
+  const entries = Array.from(raw.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  const result: EcoPoint[] = []
+  for (let i = 12; i < entries.length; i++) {
+    const [date, curr] = entries[i]
+    const [, prev]     = entries[i - 12]
+    const yoy = ((curr / prev) - 1) * 100
+    result.push({ date, timestamp: new Date(date).getTime(), value: Math.round(yoy * 10) / 10 })
+  }
+  return result
+}
+
+/** Fetch live Real GDP from FRED (GDPC1 quarterly) and compute YoY % */
+async function fetchLiveRealGDP(): Promise<EcoPoint[]> {
+  const raw     = await fetchFREDCSV('GDPC1')
+  const entries = Array.from(raw.entries()).sort((a, b) => a[0].localeCompare(b[0]))
+  const result: EcoPoint[] = []
+  for (let i = 4; i < entries.length; i++) {
+    const [date, curr] = entries[i]
+    const [, prev]     = entries[i - 4]
+    const yoy = ((curr / prev) - 1) * 100
+    result.push({ date, timestamp: new Date(date).getTime(), value: Math.round(yoy * 10) / 10 })
+  }
+  return result
+}
+
+/** Fetch live WTI Crude Oil from Yahoo Finance (CL=F) */
+async function fetchLiveOil(): Promise<EcoPoint[]> {
+  const symbol = encodeURIComponent('CL=F')
+  const from   = Math.floor(new Date('1987-01-01').getTime() / 1000)
+  const to     = Math.floor(Date.now() / 1000)
+  const url    = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1mo&period1=${from}&period2=${to}`
+
+  const res = await fetch(url, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
+        '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+      Accept: 'application/json',
+    },
+    next: { revalidate: 86400 },
+  })
+  if (!res.ok) throw new Error(`Yahoo Finance ${res.status} for CL=F`)
+  const json   = await res.json()
+  const result = json?.chart?.result?.[0]
+  if (!result) throw new Error('No chart result for CL=F')
+
+  const timestamps: number[]          = result.timestamp ?? []
+  const closes: (number | null)[]     =
+    result.indicators?.adjclose?.[0]?.adjclose ??
+    result.indicators?.quote?.[0]?.close ?? []
+
+  return timestamps
+    .map((ts, i) => {
+      const c = closes[i]
+      if (c == null || c <= 0) return null
+      const date = new Date(ts * 1000).toISOString().split('T')[0]
+      return { date, timestamp: new Date(date).getTime(), value: Math.round(c * 100) / 100 }
+    })
+    .filter((p): p is EcoPoint => p !== null)
+}
+
+/**
+ * Async version — tries live FRED/Yahoo first, falls back to static data.
+ * Use this in server components (page.tsx).
+ */
+export async function getEcoDataAsync(indicator: EcoIndicator): Promise<EcoPoint[]> {
+  const staticFallback = getEcoData(indicator)
+  try {
+    switch (indicator) {
+      case 'fed_rate':    return await fetchLiveFedRate()
+      case 'inflation_cpi': return await fetchLiveCPI()
+      case 'real_gdp':    return await fetchLiveRealGDP()
+      case 'oil_price':   return await fetchLiveOil()
+      // CAPE and Concentration have no reliable free live API
+      case 'pe_ratio':
+      case 'sp_concentration':
+        return staticFallback
+    }
+  } catch {
+    // Network unavailable, rate-limited, or CORS — return static data
+    return staticFallback
   }
 }

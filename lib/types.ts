@@ -95,7 +95,7 @@ export interface EcoPoint {
   value: number
 }
 
-export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'sp_concentration' | 'inflation_cpi' | 'oil_price'
+export type EcoIndicator = 'fed_rate' | 'pe_ratio' | 'sp_concentration' | 'inflation_cpi' | 'oil_price' | 'real_gdp'
 
 export const ECO_META: Record<EcoIndicator, {
   label: string
@@ -142,7 +142,15 @@ export const ECO_META: Record<EcoIndicator, {
     shortLabel: 'Oil (WTI)',
     color: '#84cc16',
     unit: '$',
-    description: 'WTI Crude Oil spot price in USD per barrel',
+    description: 'WTI Crude Oil spot price in USD per barrel (live from Yahoo Finance)',
     domain: [0, 160],
+  },
+  real_gdp: {
+    label: 'US Real GDP Growth',
+    shortLabel: 'GDP Growth',
+    color: '#34d399',
+    unit: '%',
+    description: 'US Real GDP year-over-year growth rate (inflation-adjusted, FRED)',
+    domain: [-12, 10],
   },
 }

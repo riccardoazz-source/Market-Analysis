@@ -121,6 +121,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
           downturns={downturns}
           activeDownturnId={activeDownturnId}
           filter={typeFilter}
+          categoryFilter={categoryFilter}
           onDownturnClick={handleDownturnClick}
           ecoData={ecoData}
         />

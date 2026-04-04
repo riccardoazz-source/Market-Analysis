@@ -13,7 +13,7 @@ import {
   ResponsiveContainer,
   Brush,
 } from 'recharts'
-import { DataPoint, Downturn, EcoPoint, EcoIndicator, ECO_META } from '@/lib/types'
+import { DataPoint, Downturn, EcoPoint, EcoIndicator, ECO_META, DownturnCategory } from '@/lib/types'
 import { formatDateShort, formatPercent } from '@/lib/utils'
 
 // ─── Asset config ─────────────────────────────────────────────────────────────
@@ -141,12 +141,13 @@ interface Props {
   downturns: Downturn[]
   activeDownturnId: number | null
   filter: 'all' | 'bear' | 'correction'
+  categoryFilter: DownturnCategory | null
   onDownturnClick: (id: number) => void
   ecoData: Record<EcoIndicator, EcoPoint[]>
 }
 
 export default function SP500Chart({
-  data, downturns, activeDownturnId, filter, onDownturnClick, ecoData,
+  data, downturns, activeDownturnId, filter, categoryFilter, onDownturnClick, ecoData,
 }: Props) {
   const [logScale,     setLogScale]     = useState(false)
   const [activeAssets, setActiveAssets] = useState<Set<AssetKey>>(new Set<AssetKey>(['sp500']))
@@ -209,6 +210,14 @@ export default function SP500Chart({
       return true
     }),
     [downturns, filter]
+  )
+
+  // When categoryFilter is active, only show matching downturns on chart
+  const chartDownturns = useMemo(
+    () => categoryFilter
+      ? filteredDownturns.filter((d) => d.categories.includes(categoryFilter))
+      : filteredDownturns,
+    [filteredDownturns, categoryFilter]
   )
 
   const formatXAxis = useCallback((ts: number) => new Date(ts).getFullYear().toString(), [])
@@ -352,6 +361,14 @@ export default function SP500Chart({
           <div className="w-3 h-3 rounded bg-orange-500/50 border border-orange-500/70" />
           Correction (≥5%)
         </div>
+        {categoryFilter && (
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-blue-400" />
+            <span className="text-blue-400 font-medium text-xs">
+              Chart filtered: showing only &ldquo;{categoryFilter.replace('_', ' ')}&rdquo; events
+            </span>
+          </div>
+        )}
         {downturns.some((d) => d.isOngoing) && (
           <div className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
@@ -431,8 +448,8 @@ export default function SP500Chart({
             isAnimationActive={false}
           />
 
-          {/* Downturn shading */}
-          {filteredDownturns.map((dt) => {
+          {/* Downturn shading — filtered by category when active */}
+          {chartDownturns.map((dt) => {
             const isBear   = dt.type === 'bear_market'
             const isActive = dt.id === activeDownturnId
             const fill     = isBear ? '#ef4444' : '#f97316'

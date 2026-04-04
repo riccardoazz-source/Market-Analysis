@@ -15,8 +15,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    // 'dark' class is the default; ThemeToggle removes it for light mode
-    <html lang="en" className="dark">
+    // No 'dark' class → light mode by default. ThemeToggle adds 'dark' for dark mode.
+    <html lang="en">
       <body>{children}</body>
     </html>
   )

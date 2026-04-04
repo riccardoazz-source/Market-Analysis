@@ -1,7 +1,7 @@
 import { Suspense } from 'react'
 import { fetchMarketData } from '@/lib/sp500'
 import { DOWNTURNS, computeStats, detectOngoingDownturn } from '@/lib/downturns'
-import { getEcoData } from '@/lib/economics'
+import { getEcoDataAsync, getEcoData } from '@/lib/economics'
 import Dashboard from '@/components/Dashboard'
 import ThemeToggle from '@/components/ThemeToggle'
 import { EcoIndicator } from '@/lib/types'
@@ -11,20 +11,24 @@ export const revalidate = 3600
 export default async function Home() {
   const marketData = await fetchMarketData()
 
-  // Enrich auto-detection with current macro context
-  const fedData  = getEcoData('fed_rate')
-  const capeData = getEcoData('pe_ratio')
-  const currentFedRate = fedData[fedData.length - 1]?.value
-  const currentCape    = capeData[capeData.length - 1]?.value
+  // Enrich auto-detection with current macro context (use static for speed)
+  const fedStaticData  = getEcoData('fed_rate')
+  const capeStaticData = getEcoData('pe_ratio')
+  const currentFedRate = fedStaticData[fedStaticData.length - 1]?.value
+  const currentCape    = capeStaticData[capeStaticData.length - 1]?.value
 
   const ongoingDownturn = detectOngoingDownturn(marketData, currentFedRate, currentCape)
   const allDownturns    = ongoingDownturn ? [...DOWNTURNS, ongoingDownturn] : DOWNTURNS
   const stats           = computeStats(allDownturns)
 
-  const ecoIndicators: EcoIndicator[] = ['fed_rate', 'pe_ratio', 'sp_concentration', 'inflation_cpi', 'oil_price']
-  const ecoData = Object.fromEntries(
-    ecoIndicators.map((ind) => [ind, getEcoData(ind)])
-  ) as Record<EcoIndicator, ReturnType<typeof getEcoData>>
+  // Fetch all eco data — live where available (FRED/Yahoo), static fallback otherwise
+  const ecoIndicators: EcoIndicator[] = [
+    'fed_rate', 'pe_ratio', 'sp_concentration', 'inflation_cpi', 'oil_price', 'real_gdp',
+  ]
+  const ecoDataEntries = await Promise.all(
+    ecoIndicators.map(async (ind) => [ind, await getEcoDataAsync(ind)] as const)
+  )
+  const ecoData = Object.fromEntries(ecoDataEntries) as Record<EcoIndicator, ReturnType<typeof getEcoData>>
 
   return (
     <main className="min-h-screen" style={{ backgroundColor: 'var(--bg-page)' }}>

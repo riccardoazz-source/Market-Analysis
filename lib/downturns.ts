@@ -128,6 +128,46 @@ export const DOWNTURNS: Downturn[] = [
     assetPerf: { gold: +11.2 },
   },
   {
+    id: 19,
+    name: '2003 Iraq War Selloff',
+    startDate: '2002-11-27',
+    endDate: '2003-03-11',
+    recoveryDate: '2003-06-17',
+    peakValue: 954.28,
+    troughValue: 788.90,
+    drawdown: -17.3,
+    durationDays: 104,
+    recoveryDays: 98,
+    categories: ['war', 'geopolitical'],
+    cause:
+      'Mounting investor anxiety over the imminent US-led invasion of Iraq, combined with a weak earnings environment and corporate governance overhang from the dot-com scandals (Enron, WorldCom), drove a sharp secondary decline after the post-dot-com relief rally.',
+    description:
+      'After the dot-com trough in October 2002, markets staged a brief relief rally. However, as the US military buildup for Iraq escalated through early 2003, uncertainty paralyzed investors. The S&P 500 hit a multi-year low on March 11, 2003 — just nine days before the invasion began. Paradoxically, the actual invasion marked the bottom; markets rallied sharply once the outcome appeared decisive.',
+    type: 'correction',
+    tags: ['Iraq War', 'geopolitical', 'corporate fraud', '2002', '2003'],
+    assetPerf: { gold: +11.0, bonds: +6.5 },
+  },
+  {
+    id: 20,
+    name: '2007 Subprime Warning',
+    startDate: '2007-07-16',
+    endDate: '2007-08-16',
+    recoveryDate: '2007-09-18',
+    peakValue: 1555.90,
+    troughValue: 1406.70,
+    drawdown: -9.6,
+    durationDays: 31,
+    recoveryDays: 33,
+    categories: ['credit_crisis'],
+    cause:
+      "Bear Stearns revealed two hedge funds had lost nearly all value from subprime mortgage exposure (July 2007). On August 9, BNP Paribas froze three funds citing inability to value subprime assets — effectively the moment global credit markets first seized up.",
+    description:
+      'The first concrete warning shot of what would become the Global Financial Crisis. Bear Stearns fund collapses and BNP Paribas halting withdrawals triggered a sharp equity selloff. The Fed responded on August 17 with an emergency discount-rate cut, and markets recovered. Investors believed the crisis was contained — they were wrong. The GFC proper began ten weeks later.',
+    type: 'correction',
+    tags: ['Bear Stearns', 'BNP Paribas', 'subprime', 'credit crunch', '2007'],
+    assetPerf: { gold: +0.8, bonds: +3.5 },
+  },
+  {
     id: 5,
     name: 'Global Financial Crisis',
     startDate: '2007-10-09',
@@ -266,6 +306,26 @@ export const DOWNTURNS: Downturn[] = [
     type: 'bear_market',
     tags: ['COVID-19', 'pandemic', 'Fed QE', '2020'],
     assetPerf: { gold: -1.5, bonds: +14.3, btc: -25.5 },
+  },
+  {
+    id: 21,
+    name: '2020 Tech Correction',
+    startDate: '2020-09-02',
+    endDate: '2020-09-23',
+    recoveryDate: '2020-11-24',
+    peakValue: 3588.11,
+    troughValue: 3229.34,
+    drawdown: -10.0,
+    durationDays: 21,
+    recoveryDays: 62,
+    categories: ['market_structure', 'pandemic'],
+    cause:
+      "An extreme 'FOMO' call-option-buying frenzy — driven partly by SoftBank's $4 billion options positioning (dubbed the 'Nasdaq whale') — inflated a tech/growth stock bubble. When that positioning unwound, the Nasdaq fell 12% in three days. COVID second-wave fears and US stimulus stalemate added to the selloff.",
+    description:
+      "After rallying 75% from its March 2020 low, the S&P 500 reached a new ATH on September 2, then fell sharply as the options-fuelled tech rally collapsed. The Nasdaq dropped over 10% in three days. Markets also faced a US election uncertainty premium and a COVID second wave in Europe. Recovery came on November 9 via Pfizer/BioNTech vaccine news, which launched the value rotation and pushed markets to new all-time highs by late November.",
+    type: 'correction',
+    tags: ['SoftBank', 'options', 'Nasdaq', 'COVID second wave', '2020'],
+    assetPerf: { gold: -2.5, bonds: +1.8, btc: -8.5 },
   },
   {
     id: 11,
@@ -417,9 +477,22 @@ export function detectOngoingDownturn(
   // Infer likely macro categories from timing and current conditions
   const inferredCategories: DownturnCategory[] = []
   const peakYear = parseInt(peak.date.substring(0, 4))
-  if (peakYear >= 2024)                                     inferredCategories.push('geopolitical')
+
+  // Geopolitical — post-2022 ongoing conflicts (Russia-Ukraine, Middle East, Trade Wars)
+  if (peakYear >= 2022) inferredCategories.push('geopolitical')
+
+  // War — Russia-Ukraine started Feb 2022 and is ongoing; trade war from 2025
+  if (peakYear >= 2022) inferredCategories.push('war')
+
+  // Political — US tariff/trade war context from 2025
+  if (peakYear >= 2025) inferredCategories.push('political')
+
+  // Inflation / rate hikes — elevated Fed rate environment
   if (currentFedRate !== undefined && currentFedRate > 3.5) inferredCategories.push('inflation_rates')
-  if (peakYear === 2022 || peakYear === 2023)               inferredCategories.push('inflation_rates')
+  if (peakYear === 2022 || peakYear === 2023) inferredCategories.push('inflation_rates')
+
+  // Oil shock — if current oil context is relevant (2022-2023 energy crisis)
+  if (peakYear >= 2022 && peakYear <= 2024) inferredCategories.push('oil_shock')
   // de-duplicate
   const seen = new Set<string>()
   const uniqueCats = inferredCategories.filter((c) => {
