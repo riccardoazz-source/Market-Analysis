@@ -45,6 +45,22 @@ async function fetchYahoo(
 
 // ─── Main fetch ───────────────────────────────────────────────────────────────
 
+/**
+ * Collapses a date→value map to a YYYY-MM→value map, keeping the first
+ * value found per month (the earliest trading-day close).
+ * Yahoo Finance may return different first-trading-day dates per symbol
+ * (e.g. ^GSPC → 2024-01-02, GC=F → 2024-01-03), so we match by month
+ * rather than exact date to prevent gold/bonds/BTC from being null everywhere.
+ */
+function byMonth(m: Map<string, number>): Map<string, number> {
+  const out = new Map<string, number>()
+  m.forEach((val, date) => {
+    const key = date.substring(0, 7) // YYYY-MM
+    if (!out.has(key)) out.set(key, val)
+  })
+  return out
+}
+
 export async function fetchMarketData(): Promise<DataPoint[]> {
   try {
     const [sp500Map, goldMap, bondsMap, btcMap] = await Promise.all([
@@ -56,16 +72,23 @@ export async function fetchMarketData(): Promise<DataPoint[]> {
 
     if (sp500Map.size < 100) throw new Error('Insufficient S&P 500 data')
 
+    const goldM  = byMonth(goldMap)
+    const bondsM = byMonth(bondsMap)
+    const btcM   = byMonth(btcMap)
+
     return Array.from(sp500Map.entries())
       .sort((a, b) => a[0].localeCompare(b[0]))
-      .map(([date, close]) => ({
-        date,
-        timestamp: new Date(date).getTime(),
-        close,
-        gold:  goldMap.get(date),
-        bonds: bondsMap.get(date),
-        btc:   btcMap.get(date),
-      }))
+      .map(([date, close]) => {
+        const mo = date.substring(0, 7) // YYYY-MM
+        return {
+          date,
+          timestamp: new Date(date).getTime(),
+          close,
+          gold:  goldM.get(mo),
+          bonds: bondsM.get(mo),
+          btc:   btcM.get(mo),
+        }
+      })
   } catch {
     // Network unavailable or rate-limited — use curated static data
     return getStaticData()

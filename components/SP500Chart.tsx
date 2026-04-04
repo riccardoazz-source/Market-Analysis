@@ -164,6 +164,7 @@ export default function SP500Chart({
   const [activeEco,    setActiveEco]    = useState<EcoIndicator | null>(null)
 
   // ── Separate right axes in linear (non-normalized) mode ───────────
+  const showGoldAxis  = activeAssets.has('gold')  && !isNormalized
   const showBtcAxis   = activeAssets.has('btc')   && !isNormalized
   const showBondsAxis = activeAssets.has('bonds')  && !isNormalized
 
@@ -290,9 +291,9 @@ export default function SP500Chart({
 
   const ecoDomain = activeEco ? ECO_META[activeEco].domain : [0, 10]
 
-  // Chart right margin: accommodate BTC, Bonds and/or eco axes
-  const rightAxesCount = [showBtcAxis, showBondsAxis, !!activeEco].filter(Boolean).length
-  const rightMargin = rightAxesCount === 0 ? 15 : rightAxesCount === 1 ? 58 : rightAxesCount === 2 ? 112 : 165
+  // Chart right margin: accommodate Gold, BTC, Bonds and/or eco axes
+  const rightAxesCount = [showGoldAxis, showBtcAxis, showBondsAxis, !!activeEco].filter(Boolean).length
+  const rightMargin = rightAxesCount === 0 ? 15 : rightAxesCount === 1 ? 58 : rightAxesCount === 2 ? 112 : rightAxesCount === 3 ? 165 : 218
 
   // Date label for index mode base
   const normalizeBaseLabel = normalizeBase
@@ -346,6 +347,11 @@ export default function SP500Chart({
             onClick={() => toggleAsset(k)}
           />
         ))}
+        {showGoldAxis && (
+          <span className="text-xs text-yellow-400/80 self-center ml-1">
+            Gold on right axis (USD/oz)
+          </span>
+        )}
         {showBtcAxis && (
           <span className="text-xs text-orange-400/80 self-center ml-1">
             BTC on right axis (USD)
@@ -459,14 +465,28 @@ export default function SP500Chart({
           {/* Left axis: S&P 500 or normalized */}
           <YAxis
             yAxisId="main"
-            scale={!isNormalized && logScale ? 'log' : 'auto'}
-            domain={[0, 'auto']}
+            scale={logScale ? 'log' : 'auto'}
+            domain={logScale ? ['auto', 'auto'] : [0, 'auto']}
             tickFormatter={formatMainY}
             stroke="#475569"
             tick={{ fill: '#94a3b8', fontSize: 11 }}
             tickLine={false}
             width={50}
           />
+
+          {/* Right axis: Gold price when Gold active and not normalized (~$250–$3800) */}
+          {showGoldAxis && (
+            <YAxis
+              yAxisId="gold"
+              orientation="right"
+              domain={['auto', 'auto']}
+              tickFormatter={(v: number) => `$${v >= 1000 ? (v / 1000).toFixed(1) + 'k' : v.toFixed(0)}`}
+              stroke={ASSETS.gold.color}
+              tick={{ fill: ASSETS.gold.color, fontSize: 10 }}
+              tickLine={false}
+              width={48}
+            />
+          )}
 
           {/* Right axis: BTC price when BTC active and not normalized */}
           {showBtcAxis && (
@@ -582,10 +602,10 @@ export default function SP500Chart({
             name="S&P 500"
           />
 
-          {/* Gold — solid continuous line; connectNulls bridges any sparse data gaps */}
+          {/* Gold — solid continuous line; own right axis in linear mode (scale ~$250–$3800) */}
           {activeAssets.has('gold') && (
             <Line
-              yAxisId="main"
+              yAxisId={isNormalized ? 'main' : 'gold'}
               type="monotone"
               dataKey={isNormalized ? 'goldNorm' : 'gold'}
               stroke={ASSETS.gold.color}
