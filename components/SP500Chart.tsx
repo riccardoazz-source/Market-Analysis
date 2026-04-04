@@ -9,6 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ReferenceArea,
+  ReferenceLine,
   ResponsiveContainer,
   Brush,
 } from 'recharts'
@@ -25,6 +26,10 @@ const ASSETS = {
 } as const
 
 type AssetKey = keyof typeof ASSETS
+
+// CAPE P/E historical reference levels
+const CAPE_HIST_AVG   = 15.9   // long-run historical average (Shiller)
+const CAPE_MODERN_AVG = 27.2   // post-1990 modern average
 
 // ─── Tooltip ──────────────────────────────────────────────────────────────────
 
@@ -89,12 +94,16 @@ function CustomTooltip({
       })()}
 
       {isNormalized && (
-        <p className="text-slate-500 mt-1 text-[10px]">Base = 100 at left edge</p>
+        <p className="text-slate-500 mt-1 text-[10px]">Base = 100 at chart start</p>
       )}
 
       {activeDt && (
         <div className="mt-2 pt-2 border-t border-slate-700">
-          <p className={`font-semibold ${activeDt.type === 'bear_market' ? 'text-red-400' : 'text-orange-400'}`}>
+          <p className={`font-semibold ${
+            activeDt.type === 'bear_market' ? 'text-red-400'
+            : activeDt.type === 'correction' ? 'text-orange-400'
+            : 'text-yellow-400'
+          }`}>
             {activeDt.isOngoing ? '🔴 ' : ''}{activeDt.name}
           </p>
           <p className="text-slate-400">{formatPercent(activeDt.drawdown)} peak-to-trough</p>
@@ -144,9 +153,15 @@ export default function SP500Chart({
   const [activeAssets, setActiveAssets] = useState<Set<AssetKey>>(new Set<AssetKey>(['sp500']))
   const [isNormalized, setIsNormalized] = useState(false)
   const [activeEco,    setActiveEco]    = useState<EcoIndicator | null>(null)
-  const [brushRange,   setBrushRange]   = useState<{ startIndex: number; endIndex: number } | null>(null)
 
-  // ── Base chart data ────────────────────────────────────────────────
+  // ── Initial brush start index ≈ 1987 ─────────────────────────────
+  const defaultStartIndex = useMemo(() => {
+    const target = new Date('1987-01-01').getTime()
+    const idx    = data.findIndex((d) => d.timestamp >= target)
+    return idx > 0 ? idx : 0
+  }, [data])
+
+  // ── Base chart data (stable — no brush deps) ──────────────────────
   const chartData = useMemo(
     () => data.map((d) => ({
       timestamp: d.timestamp,
@@ -158,7 +173,7 @@ export default function SP500Chart({
     [data]
   )
 
-  // ── Merge eco data by date ─────────────────────────────────────────
+  // ── Merge eco data by timestamp ───────────────────────────────────
   const ecoMap = useMemo(() => {
     if (!activeEco) return new Map<number, number>()
     const map = new Map<number, number>()
@@ -166,10 +181,11 @@ export default function SP500Chart({
     return map
   }, [activeEco, ecoData])
 
-  // ── Normalized + eco merged ────────────────────────────────────────
+  // ── Display data: normalized to defaultStartIndex, eco merged ─────
+  // NOTE: Does NOT depend on brushRange — this fixes the brush reset bug.
+  // The Brush component manages its own viewport state internally.
   const displayData = useMemo(() => {
-    const startIdx = brushRange?.startIndex ?? 0
-    const base     = chartData[startIdx]
+    const base = chartData[defaultStartIndex]
 
     return chartData.map((d) => {
       const eco = activeEco ? ecoMap.get(d.timestamp) ?? null : null
@@ -180,26 +196,19 @@ export default function SP500Chart({
 
       return {
         ...d,
-        sp500Norm: base.close > 0                  ? (d.close  / base.close)  * 100 : null,
-        goldNorm:  base.gold  && base.gold  > 0    ? ((d.gold  ?? 0) / base.gold)  * 100 : null,
-        bondsNorm: base.bonds && base.bonds > 0    ? ((d.bonds ?? 0) / base.bonds) * 100 : null,
-        btcNorm:   base.btc   && base.btc   > 0    ? ((d.btc   ?? 0) / base.btc)   * 100 : null,
+        sp500Norm: base.close > 0                 ? (d.close  / base.close)  * 100 : null,
+        goldNorm:  base.gold  && base.gold  > 0   ? ((d.gold  ?? 0) / base.gold)  * 100 : null,
+        bondsNorm: base.bonds && base.bonds > 0   ? ((d.bonds ?? 0) / base.bonds) * 100 : null,
+        btcNorm:   base.btc   && base.btc   > 0   ? ((d.btc   ?? 0) / base.btc)   * 100 : null,
         eco,
       }
     })
-  }, [chartData, brushRange, isNormalized, activeEco, ecoMap])
-
-  // ── Initial brush start ≈ 1987 ─────────────────────────────────────
-  const defaultStartIndex = useMemo(() => {
-    const target = new Date('1987-01-01').getTime()
-    const idx    = chartData.findIndex((d) => d.timestamp >= target)
-    return idx > 0 ? idx : 0
-  }, [chartData])
+  }, [chartData, defaultStartIndex, isNormalized, activeEco, ecoMap])
 
   const filteredDownturns = useMemo(
     () => downturns.filter((d) => {
       if (filter === 'bear')       return d.type === 'bear_market'
-      if (filter === 'correction') return d.type === 'correction'
+      if (filter === 'correction') return d.type === 'correction' || d.type === 'minor'
       return true
     }),
     [downturns, filter]
@@ -244,7 +253,7 @@ export default function SP500Chart({
         <div>
           <h3 className="text-base font-semibold text-white">S&P 500 — Historical Performance</h3>
           <p className="text-xs text-slate-400 mt-0.5">
-            Shaded areas = downturn periods. Click to highlight. Use brush to zoom.
+            Shaded areas = downturn periods. Click to highlight. Drag bottom brush to zoom.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -286,7 +295,7 @@ export default function SP500Chart({
         ))}
         {isNormalized && activeAssets.size > 1 && (
           <span className="text-xs text-indigo-400 self-center ml-1">
-            Normalized to 100 at left edge
+            Normalized to 100 at chart start
           </span>
         )}
       </div>
@@ -313,6 +322,20 @@ export default function SP500Chart({
         )}
       </div>
 
+      {/* CAPE average legend (only when CAPE is active) */}
+      {activeEco === 'pe_ratio' && (
+        <div className="flex flex-wrap items-center gap-4 mb-2 text-xs">
+          <div className="flex items-center gap-1.5">
+            <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#94a3b8" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+            <span className="text-slate-400">Historical avg ({CAPE_HIST_AVG}x)</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <svg width="24" height="10"><line x1="0" y1="5" x2="24" y2="5" stroke="#fb923c" strokeWidth="1.5" strokeDasharray="4 3" /></svg>
+            <span className="text-slate-400">Modern avg ({CAPE_MODERN_AVG}x, post-1990)</span>
+          </div>
+        </div>
+      )}
+
       {/* ── Legend ──────────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center gap-4 mb-3 text-xs text-slate-400">
         <div className="flex items-center gap-1.5">
@@ -322,6 +345,10 @@ export default function SP500Chart({
         <div className="flex items-center gap-1.5">
           <div className="w-3 h-3 rounded bg-orange-500/50 border border-orange-500/70" />
           Correction (10–20%)
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-3 h-3 rounded bg-yellow-500/40 border border-yellow-500/60" />
+          Minor Decline (5–10%)
         </div>
         {downturns.some((d) => d.isOngoing) && (
           <div className="flex items-center gap-1.5">
@@ -391,8 +418,9 @@ export default function SP500Chart({
           {/* Downturn shading */}
           {filteredDownturns.map((dt) => {
             const isBear   = dt.type === 'bear_market'
+            const isMinor  = dt.type === 'minor'
             const isActive = dt.id === activeDownturnId
-            const fill     = isBear ? '#ef4444' : '#f97316'
+            const fill     = isBear ? '#ef4444' : isMinor ? '#eab308' : '#f97316'
             return (
               <ReferenceArea
                 key={dt.id}
@@ -400,7 +428,7 @@ export default function SP500Chart({
                 x1={new Date(dt.startDate).getTime()}
                 x2={new Date(dt.endDate).getTime()}
                 fill={fill}
-                fillOpacity={dt.isOngoing ? 0.28 : isActive ? 0.30 : 0.15}
+                fillOpacity={dt.isOngoing ? 0.28 : isActive ? 0.30 : isMinor ? 0.12 : 0.15}
                 stroke={fill}
                 strokeOpacity={dt.isOngoing ? 0.9 : isActive ? 0.8 : 0.4}
                 strokeWidth={dt.isOngoing ? 2 : isActive ? 1.5 : 1}
@@ -410,6 +438,28 @@ export default function SP500Chart({
               />
             )
           })}
+
+          {/* CAPE P/E average reference lines */}
+          {activeEco === 'pe_ratio' && (
+            <>
+              <ReferenceLine
+                yAxisId="eco"
+                y={CAPE_HIST_AVG}
+                stroke="#94a3b8"
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{ value: `Hist. avg ${CAPE_HIST_AVG}x`, position: 'insideTopRight', fill: '#94a3b8', fontSize: 10 }}
+              />
+              <ReferenceLine
+                yAxisId="eco"
+                y={CAPE_MODERN_AVG}
+                stroke="#fb923c"
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{ value: `Modern avg ${CAPE_MODERN_AVG}x`, position: 'insideTopRight', fill: '#fb923c', fontSize: 10 }}
+              />
+            </>
+          )}
 
           {/* S&P 500 */}
           <Line
@@ -477,19 +527,18 @@ export default function SP500Chart({
           {activeEco && (
             <Line
               yAxisId="eco"
-              type="stepAfter"
+              type={activeEco === 'fed_rate' ? 'stepAfter' : 'monotone'}
               dataKey="eco"
               stroke={ECO_META[activeEco].color}
               strokeWidth={1.5}
               dot={false}
               isAnimationActive={false}
               connectNulls
-              strokeDasharray={activeEco === 'pe_ratio' || activeEco === 'sp_concentration' ? undefined : undefined}
               name={ECO_META[activeEco].shortLabel}
             />
           )}
 
-          {/* Brush */}
+          {/* Brush — no onChange that modifies displayData deps, fixing the reset bug */}
           <Brush
             dataKey="timestamp"
             height={28}
@@ -498,11 +547,6 @@ export default function SP500Chart({
             travellerWidth={6}
             startIndex={defaultStartIndex}
             tickFormatter={(v) => new Date(v).getFullYear().toString()}
-            onChange={(range) => {
-              if (range && typeof range.startIndex === 'number') {
-                setBrushRange({ startIndex: range.startIndex, endIndex: range.endIndex as number })
-              }
-            }}
           />
         </ComposedChart>
       </ResponsiveContainer>

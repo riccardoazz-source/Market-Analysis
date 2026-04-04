@@ -26,14 +26,15 @@ export default function DownturnCard({ downturn, isActive, onClick }: Props) {
   const [expanded, setExpanded] = useState(false)
 
   const isBear    = downturn.type === 'bear_market'
+  const isMinor   = downturn.type === 'minor'
   const isOngoing = downturn.isOngoing
-  const borderColor = isBear ? 'border-red-700/60' : 'border-orange-700/60'
-  const activeBorder = isBear ? 'border-red-500' : 'border-orange-500'
-  const headerBg    = isOngoing
+  const borderColor  = isBear ? 'border-red-700/60'    : isMinor ? 'border-yellow-700/60'  : 'border-orange-700/60'
+  const activeBorder = isBear ? 'border-red-500'        : isMinor ? 'border-yellow-500'     : 'border-orange-500'
+  const headerBg     = isOngoing
     ? 'bg-red-900/50'
-    : isBear ? 'bg-red-950/60' : 'bg-orange-950/60'
-  const badgeBg   = isBear ? 'bg-red-900/60 text-red-300' : 'bg-orange-900/60 text-orange-300'
-  const valueColor = isBear ? 'text-red-400' : 'text-orange-400'
+    : isBear ? 'bg-red-950/60' : isMinor ? 'bg-yellow-950/60' : 'bg-orange-950/60'
+  const badgeBg    = isBear ? 'bg-red-900/60 text-red-300'       : isMinor ? 'bg-yellow-900/60 text-yellow-300'  : 'bg-orange-900/60 text-orange-300'
+  const valueColor = isBear ? 'text-red-400'                     : isMinor ? 'text-yellow-400'                  : 'text-orange-400'
 
   const hasAssetPerf = downturn.assetPerf &&
     (downturn.assetPerf.gold != null || downturn.assetPerf.bonds != null || downturn.assetPerf.btc != null)
@@ -51,7 +52,7 @@ export default function DownturnCard({ downturn, isActive, onClick }: Props) {
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Type badge */}
             <span className={`badge ${badgeBg}`}>
-              {isBear ? 'Bear Market' : 'Correction'}
+              {isBear ? 'Bear Market' : isMinor ? 'Minor Decline' : 'Correction'}
             </span>
             {/* Ongoing pulse */}
             {isOngoing && (

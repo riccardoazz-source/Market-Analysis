@@ -47,6 +47,46 @@ export const DOWNTURNS: Downturn[] = [
     assetPerf: { gold: +2.8 },
   },
   {
+    id: 14,
+    name: '1994 Bond Market Massacre',
+    startDate: '1994-01-31',
+    endDate: '1994-04-04',
+    recoveryDate: '1994-11-02',
+    peakValue: 481.61,
+    troughValue: 438.92,
+    drawdown: -8.9,
+    durationDays: 63,
+    recoveryDays: 212,
+    categories: ['inflation_rates'],
+    cause:
+      'The Federal Reserve raised interest rates seven times in 12 months (1994–1995), shocking bond markets globally. The sudden rate rises caused massive losses in bond portfolios, including Orange County, California, which filed for bankruptcy after losing $1.7 billion in interest-rate derivatives.',
+    description:
+      "After years of near-zero rates, the Fed's 1994 tightening cycle blindsided markets. Rates rose from 3% to 5.5% in rapid succession. Bond markets suffered their worst year in decades — the 'Great Bond Massacre.' Orange County went bankrupt. The S&P 500 corrected but held up relatively well compared to fixed income, recovering to new highs by November 1994.",
+    type: 'minor',
+    tags: ['Fed rate hikes', 'bond market', 'Orange County', '1994'],
+    assetPerf: { gold: -2.1 },
+  },
+  {
+    id: 15,
+    name: '1997 Asian Financial Crisis',
+    startDate: '1997-08-06',
+    endDate: '1997-10-27',
+    recoveryDate: '1997-12-05',
+    peakValue: 983.12,
+    troughValue: 876.99,
+    drawdown: -10.8,
+    durationDays: 82,
+    recoveryDays: 39,
+    categories: ['geopolitical', 'credit_crisis'],
+    cause:
+      "Thailand's decision to float the baht in July 1997 triggered cascading currency crises across Southeast Asia — Indonesia, Malaysia, South Korea, and the Philippines all saw massive capital flight and currency collapses.",
+    description:
+      "Thailand's currency devaluation in July 1997 set off a chain reaction of financial crises across Asia. On October 27, 1997 — the 'Mini-Crash' — the Dow fell 554 points (then its largest one-day point drop ever), triggering the first-ever NYSE trading halt under circuit breaker rules. The Fed held rates steady and US markets recovered swiftly, but Asian economies spent years rebuilding.",
+    type: 'correction',
+    tags: ['Asian crisis', 'currency crisis', 'contagion', '1997'],
+    assetPerf: { gold: -3.5 },
+  },
+  {
     id: 3,
     name: 'Russia Default & LTCM Crisis',
     startDate: '1998-07-17',
@@ -167,6 +207,26 @@ export const DOWNTURNS: Downturn[] = [
     assetPerf: { gold: +2.8, bonds: +4.1, btc: -28.4 },
   },
   {
+    id: 16,
+    name: '2018 Volmageddon',
+    startDate: '2018-01-26',
+    endDate: '2018-02-08',
+    recoveryDate: '2018-04-23',
+    peakValue: 2872.87,
+    troughValue: 2581.00,
+    drawdown: -10.2,
+    durationDays: 13,
+    recoveryDays: 74,
+    categories: ['market_structure', 'inflation_rates'],
+    cause:
+      "Short-volatility ETFs (XIV, SVXY) imploded when the VIX spiked from 11 to 50 on February 5 — 'Volmageddon.' A strong US jobs report on February 2 showed unexpected wage inflation, sparking fears the Fed would tighten faster than expected and triggering the initial selloff.",
+    description:
+      "After 15 months without a single 5% pullback — the longest such streak in history — a January wage inflation surprise triggered a rapid repricing. On February 5, 2018, the VIX volatility index spiked from ~11 to ~50 intraday, destroying the XIV inverse-VIX ETN (which went to zero overnight) and billions in retail short-volatility positions. The shock was violent but brief; markets recovered their losses within two months.",
+    type: 'correction',
+    tags: ['VIX', 'volatility', 'Volmageddon', 'XIV', '2018'],
+    assetPerf: { gold: +1.5, bonds: +0.8, btc: -55.0 },
+  },
+  {
     id: 9,
     name: 'Q4 2018 Selloff',
     startDate: '2018-09-20',
@@ -247,6 +307,46 @@ export const DOWNTURNS: Downturn[] = [
     assetPerf: { gold: +1.5, bonds: -7.2, btc: -18.0 },
   },
   {
+    id: 17,
+    name: '2024 April Inflation Scare',
+    startDate: '2024-03-28',
+    endDate: '2024-04-19',
+    recoveryDate: '2024-05-15',
+    peakValue: 5264.85,
+    troughValue: 4953.56,
+    drawdown: -5.9,
+    durationDays: 22,
+    recoveryDays: 26,
+    categories: ['inflation_rates', 'geopolitical'],
+    cause:
+      'Three consecutive above-forecast CPI prints (January, February, March 2024) pushed back Fed rate-cut expectations from March to September 2024. A direct Iran–Israel military exchange on April 13–14 added a geopolitical risk premium.',
+    description:
+      'After a strong early-2024 rally driven by rate-cut optimism, persistent inflation data forced markets to price out early Fed cuts. The 10-year Treasury yield climbed above 4.6%. A direct exchange of attacks between Iran and Israel on April 13–14 added geopolitical fears. The brief correction reversed quickly as Q1 2024 corporate earnings proved resilient, and the S&P 500 recovered to new highs by mid-May.',
+    type: 'minor',
+    tags: ['inflation', 'CPI', 'Iran-Israel', 'rate cuts', '2024'],
+    assetPerf: { gold: +4.5, bonds: -3.2, btc: -19.0 },
+  },
+  {
+    id: 18,
+    name: '2024 Yen Carry Unwind',
+    startDate: '2024-07-16',
+    endDate: '2024-08-05',
+    recoveryDate: '2024-08-22',
+    peakValue: 5667.20,
+    troughValue: 5186.33,
+    drawdown: -8.5,
+    durationDays: 20,
+    recoveryDays: 17,
+    categories: ['geopolitical', 'market_structure'],
+    cause:
+      'The Bank of Japan unexpectedly raised rates on July 31, 2024, triggering an unwind of the massive yen carry trade. A weak US non-farm payrolls report on August 2 (114k jobs vs. 175k expected) simultaneously raised US recession fears.',
+    description:
+      "Japan's surprise rate hike ended the era of zero rates there, forcing an abrupt reversal of the yen carry trade — where investors had borrowed cheaply in yen to buy global risk assets. On August 5, Japan's Nikkei fell 12% — its worst day since 1987 — and the S&P 500 dropped over 3%. The VIX spiked to 65 intraday, its highest since COVID. The panic subsided within days as the BoJ signaled caution, and US economic data remained resilient.",
+    type: 'minor',
+    tags: ['yen carry trade', 'Bank of Japan', 'VIX spike', 'August 5', '2024'],
+    assetPerf: { gold: -0.5, bonds: +3.2, btc: -26.0 },
+  },
+  {
     id: 13,
     name: '2025 Tariff Shock',
     startDate: '2025-02-19',
@@ -295,16 +395,18 @@ export function detectOngoingDownturn(data: DataPoint[]): Downturn | null {
   }
 
   const drawdownPct = ((trough.close - peak.close) / peak.close) * 100
-  if (drawdownPct > -10) return null
+  if (drawdownPct > -5) return null
 
-  const latest    = recent[recent.length - 1]
+  const latest     = recent[recent.length - 1]
   const currentPct = ((latest.close - peak.close) / peak.close) * 100
-  const isOngoing  = latest.date === trough.date || currentPct < -8
+  const isOngoing  = latest.date === trough.date || currentPct < -4
 
   const duration = daysBetween(peak.date, trough.date)
-  const name     = isOngoing
-    ? `Ongoing ${drawdownPct < -20 ? 'Bear Market' : 'Correction'}`
-    : `${formatDateShort(peak.date)} Auto-detected Correction`
+  const eventType = drawdownPct < -20 ? 'bear_market' : drawdownPct < -10 ? 'correction' : 'minor'
+  const typeLabel = drawdownPct < -20 ? 'Bear Market' : drawdownPct < -10 ? 'Correction' : 'Minor Decline'
+  const name      = isOngoing
+    ? `Ongoing ${typeLabel}`
+    : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
 
   return {
     id: 99,
@@ -321,7 +423,7 @@ export function detectOngoingDownturn(data: DataPoint[]): Downturn | null {
       ? `The S&P 500 is currently ${Math.abs(drawdownPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)}. The index hit an interim trough of ${trough.close.toLocaleString()} on ${formatDateShort(trough.date)}. Full context and root cause analysis will be added once the event concludes.`
       : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peak.close.toLocaleString()} (${formatDateShort(peak.date)}) to ${trough.close.toLocaleString()} (${formatDateShort(trough.date)}) over ${duration} days. Recovery is underway.`,
     cause: 'Cause analysis pending — auto-detected from live market data.',
-    type: drawdownPct < -20 ? 'bear_market' : 'correction',
+    type: eventType,
     tags: ['auto-detected', isOngoing ? 'ongoing' : 'recent'],
     categories: [],
     isOngoing,
@@ -339,6 +441,7 @@ export function computeStats(allDownturns: Downturn[]): SP500Stats {
   const curated    = allDownturns.filter((d) => !d.isAutoDetected)
   const bearMarkets = curated.filter((d) => d.type === 'bear_market')
   const corrections = curated.filter((d) => d.type === 'correction')
+  const minors      = curated.filter((d) => d.type === 'minor')
 
   const drawdowns  = curated.map((d) => d.drawdown)
   const durations  = curated.map((d) => d.durationDays)
@@ -373,6 +476,7 @@ export function computeStats(allDownturns: Downturn[]): SP500Stats {
     totalEvents: curated.length,
     bearMarkets: bearMarkets.length,
     corrections: corrections.length,
+    minorEvents: minors.length,
     avgDrawdown,
     avgDuration,
     medianDrawdown: median(drawdowns),

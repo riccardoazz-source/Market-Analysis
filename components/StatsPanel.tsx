@@ -87,7 +87,7 @@ export default function StatsPanel({ stats }: Props) {
         <StatCard
           label="Corrections"
           value={`${stats.corrections}`}
-          sub="Drops 10–20%"
+          sub={`Drops 10–20% · ${stats.minorEvents} minor (5–10%)`}
           accent="orange"
         />
       </div>
@@ -101,7 +101,7 @@ export default function StatsPanel({ stats }: Props) {
           </p>
           <div className="space-y-2.5">
             <FrequencyBar
-              label="Any ≥10% drop"
+              label="Any ≥5% drop"
               years={yearsBetweenAll}
               color="#f97316"
             />
@@ -112,7 +112,7 @@ export default function StatsPanel({ stats }: Props) {
             />
           </div>
           <p className="text-xs text-slate-500 mt-3">
-            Based on {stats.totalEvents} events since 1987. Bar scale = 0–10 years.
+            Based on {stats.totalEvents} events since 1987 ({stats.bearMarkets} bear · {stats.corrections} corrections · {stats.minorEvents} minor). Bar scale = 0–10 years.
           </p>
         </div>
 

@@ -47,7 +47,7 @@ export interface Downturn {
   recoveryDays: number | null
   description: string
   cause: string
-  type: 'bear_market' | 'correction'
+  type: 'bear_market' | 'correction' | 'minor'  // bear >20%, correction 10-20%, minor 5-10%
   tags: string[]
   categories: DownturnCategory[]
   assetPerf?: AssetPerf
@@ -58,13 +58,14 @@ export interface Downturn {
 export interface SP500Stats {
   totalEvents: number
   bearMarkets: number
-  corrections: number
+  corrections: number   // 10–20% declines
+  minorEvents: number   // 5–10% declines
   avgDrawdown: number
   avgDuration: number
   medianDrawdown: number
   medianDuration: number
   avgRecoveryDays: number
-  avgDaysBetweenAll: number    // avg days between any ≥10% downturn
+  avgDaysBetweenAll: number    // avg days between any ≥5% downturn
   avgDaysBetweenBears: number  // avg days between bear markets
   worstDrawdown: Downturn
   longestDuration: Downturn

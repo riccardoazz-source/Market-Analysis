@@ -38,7 +38,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
       downturns
         .filter((d) => {
           if (typeFilter === 'bear')       return d.type === 'bear_market'
-          if (typeFilter === 'correction') return d.type === 'correction'
+          if (typeFilter === 'correction') return d.type === 'correction' || d.type === 'minor'
           return true
         })
         .filter((d) => {
@@ -155,7 +155,7 @@ export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Prop
                       : 'bg-slate-800 text-slate-400 hover:text-slate-200 hover:bg-slate-700'
                   }`}
                 >
-                  {f === 'all' ? 'All' : f === 'bear' ? 'Bear Markets' : 'Corrections'}
+                  {f === 'all' ? 'All' : f === 'bear' ? 'Bear Markets' : 'Corrections & Minor'}
                 </button>
               ))}
             </div>
