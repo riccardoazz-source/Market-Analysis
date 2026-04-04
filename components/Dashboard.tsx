@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useRef } from 'react'
-import { DataPoint, Downturn, SP500Stats, DownturnCategory, CATEGORY_META } from '@/lib/types'
+import { DataPoint, Downturn, SP500Stats, DownturnCategory, CATEGORY_META, EcoIndicator, EcoPoint } from '@/lib/types'
 import { formatPercent, daysToMonths } from '@/lib/utils'
 import StatsPanel from './StatsPanel'
 import SP500Chart from './SP500Chart'
@@ -11,6 +11,7 @@ interface Props {
   sp500Data: DataPoint[]
   downturns: Downturn[]
   stats: SP500Stats
+  ecoData: Record<EcoIndicator, EcoPoint[]>
 }
 
 type TypeFilter  = 'all' | 'bear' | 'correction'
@@ -22,7 +23,7 @@ const ALL_CATEGORIES: DownturnCategory[] = [
   'geopolitical', 'oil_shock', 'market_structure', 'political',
 ]
 
-export default function Dashboard({ sp500Data, downturns, stats }: Props) {
+export default function Dashboard({ sp500Data, downturns, stats, ecoData }: Props) {
   const [activeDownturnId, setActiveDownturnId] = useState<number | null>(null)
   const [typeFilter,       setTypeFilter]       = useState<TypeFilter>('all')
   const [categoryFilter,   setCategoryFilter]   = useState<DownturnCategory | null>(null)
@@ -121,6 +122,7 @@ export default function Dashboard({ sp500Data, downturns, stats }: Props) {
           activeDownturnId={activeDownturnId}
           filter={typeFilter}
           onDownturnClick={handleDownturnClick}
+          ecoData={ecoData}
         />
       </section>
 

@@ -1,20 +1,23 @@
 import { Suspense } from 'react'
 import { fetchMarketData } from '@/lib/sp500'
 import { DOWNTURNS, computeStats, detectOngoingDownturn } from '@/lib/downturns'
+import { getEcoData } from '@/lib/economics'
 import Dashboard from '@/components/Dashboard'
+import { EcoIndicator } from '@/lib/types'
 
-export const revalidate = 3600 // re-fetch every hour for live data
+export const revalidate = 3600
 
 export default async function Home() {
   const marketData = await fetchMarketData()
 
-  // Detect any ongoing downturn not yet in the curated list
   const ongoingDownturn = detectOngoingDownturn(marketData)
-  const allDownturns = ongoingDownturn
-    ? [...DOWNTURNS, ongoingDownturn]
-    : DOWNTURNS
+  const allDownturns    = ongoingDownturn ? [...DOWNTURNS, ongoingDownturn] : DOWNTURNS
+  const stats           = computeStats(allDownturns)
 
-  const stats = computeStats(allDownturns)
+  const ecoIndicators: EcoIndicator[] = ['fed_rate', 'pe_ratio', 'sp_concentration']
+  const ecoData = Object.fromEntries(
+    ecoIndicators.map((ind) => [ind, getEcoData(ind)])
+  ) as Record<EcoIndicator, ReturnType<typeof getEcoData>>
 
   return (
     <main className="min-h-screen bg-slate-950">
@@ -31,7 +34,7 @@ export default async function Home() {
             <div>
               <h1 className="text-lg font-bold text-white leading-none">S&P 500 Downturn Analyzer</h1>
               <p className="text-xs text-slate-400 mt-0.5">
-                Bear markets, corrections & multi-asset analysis · Live data on Vercel
+                Bear markets · corrections · multi-asset · Fed rate · P/E · concentration
               </p>
             </div>
           </div>
@@ -45,25 +48,27 @@ export default async function Home() {
           <span className="text-blue-400">Explained</span>
         </h2>
         <p className="text-slate-400 max-w-2xl text-base">
-          An interactive analysis of every bear market and correction since 1987 — what caused it,
-          how deep the fall was, how long it lasted, how Gold, Bonds and Bitcoin behaved,
-          and how long recovery took.
+          Interactive analysis of every bear market and correction since 1987 — what caused it,
+          how deep, how long, how Gold/Bonds/BTC behaved, and what the Fed and valuations looked like.
         </p>
       </section>
 
       <Suspense fallback={<LoadingPlaceholder />}>
-        <Dashboard sp500Data={marketData} downturns={allDownturns} stats={stats} />
+        <Dashboard
+          sp500Data={marketData}
+          downturns={allDownturns}
+          stats={stats}
+          ecoData={ecoData}
+        />
       </Suspense>
 
       <footer className="border-t border-slate-800 mt-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 text-center text-xs text-slate-500">
           <p>
-            Data sourced from Yahoo Finance (^GSPC, GC=F, TLT, BTC-USD).
-            For informational purposes only — not financial advice.
+            Market data: Yahoo Finance (^GSPC, GC=F, TLT, BTC-USD) · Shiller CAPE: Robert Shiller (Yale) ·
+            Fed Funds Rate: Federal Reserve. For informational purposes only — not financial advice.
           </p>
-          <p className="mt-1">
-            Revalidates hourly on Vercel. Static fallback used when Yahoo Finance is unavailable.
-          </p>
+          <p className="mt-1">Revalidates hourly on Vercel. Static fallback when Yahoo Finance unavailable.</p>
         </div>
       </footer>
     </main>
@@ -79,7 +84,7 @@ function LoadingPlaceholder() {
             <div key={i} className="h-24 bg-slate-800 rounded-xl" />
           ))}
         </div>
-        <div className="h-96 bg-slate-800 rounded-xl" />
+        <div className="h-[500px] bg-slate-800 rounded-xl" />
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-64 bg-slate-800 rounded-xl" />
