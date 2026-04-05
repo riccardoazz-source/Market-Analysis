@@ -5,7 +5,6 @@ import { DataPoint } from './types'
 async function fetchYahoo(
   symbol: string,
   from: string,
-  useRawClose = false,
 ): Promise<Map<string, number>> {
   const encoded = encodeURIComponent(symbol)
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1mo&period1=${Math.floor(new Date(from).getTime() / 1000)}&period2=${Math.floor(Date.now() / 1000)}&includeAdjustedClose=true`
@@ -25,12 +24,9 @@ async function fetchYahoo(
   if (!result) throw new Error(`No chart result for ${symbol}`)
 
   const timestamps: number[] = result.timestamp ?? []
-  // Commodity futures (GC=F, CL=F): prefer raw close — adjclose adjusts for
-  // contract roll yield, producing values far from actual spot price.
-  // Equities/ETFs: use adjclose which accounts for dividends and splits.
-  const closes: (number | null)[] = useRawClose
-    ? (result.indicators?.quote?.[0]?.close ?? [])
-    : (result.indicators?.adjclose?.[0]?.adjclose ?? result.indicators?.quote?.[0]?.close ?? [])
+  // Use adjclose for equities/ETFs (accounts for dividends/splits).
+  // For spot FX/metals (XAUUSD=X) adjclose === close, so this is always correct.
+  const closes: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose ?? result.indicators?.quote?.[0]?.close ?? []
 
   const map = new Map<string, number>()
   for (let i = 0; i < timestamps.length; i++) {
@@ -64,10 +60,10 @@ function byMonth(m: Map<string, number>): Map<string, number> {
 export async function fetchMarketData(): Promise<DataPoint[]> {
   try {
     const [sp500Map, goldMap, bondsMap, btcMap] = await Promise.all([
-      fetchYahoo('^GSPC',   '1950-01-01'),
-      fetchYahoo('GC=F',    '1987-01-01', true),  // raw close: adjclose for futures ≠ spot price
-      fetchYahoo('TLT',     '2002-07-01'),
-      fetchYahoo('BTC-USD', '2010-07-01'),
+      fetchYahoo('^GSPC',    '1950-01-01'),
+      fetchYahoo('XAUUSD=X', '1987-01-01'),  // XAU/USD spot gold — not futures
+      fetchYahoo('TLT',      '2002-07-01'),
+      fetchYahoo('BTC-USD',  '2010-07-01'),
     ])
 
     if (sp500Map.size < 100) throw new Error('Insufficient S&P 500 data')
