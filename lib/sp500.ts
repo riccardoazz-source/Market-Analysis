@@ -10,6 +10,7 @@ async function fetchYahoo(
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encoded}?interval=1mo&period1=${Math.floor(new Date(from).getTime() / 1000)}&period2=${Math.floor(Date.now() / 1000)}&includeAdjustedClose=true`
 
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
@@ -46,7 +47,7 @@ async function fetchYahoo(
 
 async function fetchGoldFRED(): Promise<Map<string, number>> {
   const url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GOLDAMGBD228NLBM'
-  const res = await fetch(url, { next: { revalidate: 86400 } })
+  const res = await fetch(url, { signal: AbortSignal.timeout(8000), next: { revalidate: 86400 } })
   if (!res.ok) throw new Error(`FRED gold ${res.status}`)
   const text = await res.text()
   const monthMap = new Map<string, number>()

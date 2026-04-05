@@ -321,6 +321,7 @@ export function getEcoData(indicator: EcoIndicator): EcoPoint[] {
 async function fetchFREDCSV(seriesId: string): Promise<Map<string, number>> {
   const url = `https://fred.stlouisfed.org/graph/fredgraph.csv?id=${seriesId}`
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; market-analysis-app/1.0)',
       Accept: 'text/csv',
@@ -379,6 +380,7 @@ async function fetchLiveRealGDP(): Promise<EcoPoint[]> {
 async function fetchLiveCAPE(): Promise<EcoPoint[]> {
   const url = 'https://shiller.econ.yale.edu/data/ie_data.csv'
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; market-analysis-app/1.0)',
       Accept: 'text/csv,text/plain',
@@ -433,6 +435,7 @@ async function fetchLiveOil(): Promise<EcoPoint[]> {
   const url    = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=1mo&period1=${from}&period2=${to}`
 
   const res = await fetch(url, {
+    signal: AbortSignal.timeout(8000),
     headers: {
       'User-Agent':
         'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 ' +
