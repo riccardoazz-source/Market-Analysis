@@ -24,9 +24,9 @@ async function fetchYahoo(
   if (!result) throw new Error(`No chart result for ${symbol}`)
 
   const timestamps: number[] = result.timestamp ?? []
-  // Use adjclose for equities/ETFs (accounts for dividends/splits).
-  // For spot FX/metals (XAUUSD=X) adjclose === close, so this is always correct.
-  const closes: (number | null)[] = result.indicators?.adjclose?.[0]?.adjclose ?? result.indicators?.quote?.[0]?.close ?? []
+  const closes: (number | null)[] =
+    result.indicators?.adjclose?.[0]?.adjclose ??
+    result.indicators?.quote?.[0]?.close ?? []
 
   const map = new Map<string, number>()
   for (let i = 0; i < timestamps.length; i++) {
@@ -39,15 +39,35 @@ async function fetchYahoo(
   return map
 }
 
-// ─── Main fetch ───────────────────────────────────────────────────────────────
+// ─── FRED gold helper ─────────────────────────────────────────────────────────
+// GOLDAMGBD228NLBM = Gold Fixing Price, London Bullion Market, USD/troy oz (daily, from 1968)
+// FRED is a US government source — reliable, no IP blocking, no rate limits.
+// We iterate daily rows and keep the last value per YYYY-MM → end-of-month price.
 
-/**
- * Collapses a date→value map to a YYYY-MM→value map, keeping the first
- * value found per month (the earliest trading-day close).
- * Yahoo Finance may return different first-trading-day dates per symbol
- * (e.g. ^GSPC → 2024-01-02, GC=F → 2024-01-03), so we match by month
- * rather than exact date to prevent gold/bonds/BTC from being null everywhere.
- */
+async function fetchGoldFRED(): Promise<Map<string, number>> {
+  const url = 'https://fred.stlouisfed.org/graph/fredgraph.csv?id=GOLDAMGBD228NLBM'
+  const res = await fetch(url, { next: { revalidate: 86400 } })
+  if (!res.ok) throw new Error(`FRED gold ${res.status}`)
+  const text = await res.text()
+  const monthMap = new Map<string, number>()
+  const lines = text.split('\n').slice(1) // skip header
+  for (const line of lines) {
+    const comma = line.indexOf(',')
+    if (comma < 0) continue
+    const date = line.substring(0, comma).trim()
+    const val  = line.substring(comma + 1).trim()
+    if (!date || !val || val === '.') continue
+    const v = parseFloat(val)
+    if (isNaN(v) || v <= 0) continue
+    monthMap.set(date.substring(0, 7), v) // overwrite → keeps last (end-of-month) value
+  }
+  return monthMap
+}
+
+// ─── Month-collapse helper ────────────────────────────────────────────────────
+// Yahoo Finance returns different first-trading-day dates per symbol
+// (e.g. ^GSPC → 2024-01-02, TLT → 2024-01-03). Match by YYYY-MM to avoid misses.
+
 function byMonth(m: Map<string, number>): Map<string, number> {
   const out = new Map<string, number>()
   m.forEach((val, date) => {
@@ -57,18 +77,32 @@ function byMonth(m: Map<string, number>): Map<string, number> {
   return out
 }
 
+// ─── Main fetch ───────────────────────────────────────────────────────────────
+
 export async function fetchMarketData(): Promise<DataPoint[]> {
   try {
-    const [sp500Map, goldMap, bondsMap, btcMap] = await Promise.all([
-      fetchYahoo('^GSPC',    '1950-01-01'),
-      fetchYahoo('XAUUSD=X', '1987-01-01'),  // XAU/USD spot gold — not futures
-      fetchYahoo('TLT',      '2002-07-01'),
-      fetchYahoo('BTC-USD',  '2010-07-01'),
+    // S&P 500, Bonds, BTC from Yahoo Finance
+    const [sp500Map, bondsMap, btcMap] = await Promise.all([
+      fetchYahoo('^GSPC',   '1950-01-01'),
+      fetchYahoo('TLT',     '2002-07-01'),
+      fetchYahoo('BTC-USD', '2010-07-01'),
     ])
-
     if (sp500Map.size < 100) throw new Error('Insufficient S&P 500 data')
 
-    const goldM  = byMonth(goldMap)
+    // Gold from FRED (primary) — reliable government source, never blocked.
+    // Falls back to Yahoo Finance XAUUSD=X spot price if FRED is unavailable.
+    let goldM = new Map<string, number>()
+    try {
+      goldM = await fetchGoldFRED()
+      if (goldM.size < 50) throw new Error('Insufficient FRED gold data')
+    } catch {
+      try {
+        goldM = byMonth(await fetchYahoo('XAUUSD=X', '1987-01-01'))
+      } catch {
+        // Gold unavailable — chart will show null for gold line
+      }
+    }
+
     const bondsM = byMonth(bondsMap)
     const btcM   = byMonth(btcMap)
 
@@ -86,7 +120,7 @@ export async function fetchMarketData(): Promise<DataPoint[]> {
         }
       })
   } catch {
-    // Network unavailable or rate-limited — use curated static data
+    // S&P 500 fetch failed — fall back to curated static data
     return getStaticData()
   }
 }
