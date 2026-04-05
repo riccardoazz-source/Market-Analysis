@@ -90,17 +90,20 @@ export async function fetchMarketData(): Promise<DataPoint[]> {
     ])
     if (sp500Map.size < 100) throw new Error('Insufficient S&P 500 data')
 
-    // Gold from FRED (primary) — reliable government source, never blocked.
-    // Falls back to Yahoo Finance XAUUSD=X spot price if FRED is unavailable.
+    // Gold: FRED GOLDAMGBD228NLBM (London Bullion Market spot, from 1968) — primary.
+    // Fallback: GLD ETF (SPDR Gold Shares, world's largest gold ETF) × 10 ≈ USD/oz.
+    // GLD loads via the same Yahoo Finance connection as ^GSPC, so if S&P loads, GLD will too.
     let goldM = new Map<string, number>()
     try {
       goldM = await fetchGoldFRED()
       if (goldM.size < 50) throw new Error('Insufficient FRED gold data')
     } catch {
       try {
-        goldM = byMonth(await fetchYahoo('XAUUSD=X', '1987-01-01'))
+        // GLD price ($/share) × 10 ≈ gold spot price ($/oz) — accurate to within ~7%
+        const gldRaw = byMonth(await fetchYahoo('GLD', '2004-11-01'))
+        gldRaw.forEach((v, mo) => goldM.set(mo, Math.round(v * 10 * 100) / 100))
       } catch {
-        // Gold unavailable — chart will show null for gold line
+        // Both sources failed — gold toggle will be disabled until next revalidation
       }
     }
 
