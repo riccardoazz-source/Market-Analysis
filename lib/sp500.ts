@@ -17,7 +17,7 @@ async function fetchYahoo(
         '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       Accept: 'application/json',
     },
-    next: { revalidate: 86400 },
+    next: { revalidate: 3600 }, // hourly — matches page ISR so data is never >1h stale
   })
   if (!res.ok) throw new Error(`Yahoo Finance ${res.status} for ${symbol}`)
   const json = await res.json()

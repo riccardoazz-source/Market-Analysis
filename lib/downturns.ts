@@ -492,7 +492,7 @@ export function detectOngoingDownturn(
     : ''
 
   const description = isOngoing
-    ? `The S&P 500 is currently ${Math.abs(drawdownPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)}. The interim trough of ${trough.close.toLocaleString()} was hit on ${formatDateShort(trough.date)}.${macroSuffix} Full root-cause analysis will be added once the event concludes.`
+    ? `The S&P 500 is currently ${Math.abs(currentPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)} (latest close: ${latest.close.toLocaleString()}). Max drawdown so far: ${Math.abs(drawdownPct).toFixed(1)}% on ${formatDateShort(trough.date)}.${macroSuffix} Full root-cause analysis will be added once the event concludes.`
     : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peak.close.toLocaleString()} (${formatDateShort(peak.date)}) to ${trough.close.toLocaleString()} (${formatDateShort(trough.date)}) over ${duration} days. Recovery is underway.${macroSuffix}`
 
   return {
@@ -503,7 +503,9 @@ export function detectOngoingDownturn(
     recoveryDate: null,
     peakValue: peak.close,
     troughValue: trough.close,
-    drawdown: Math.round(drawdownPct * 10) / 10,
+    // For ongoing events: show current position vs peak (not the worst trough),
+    // so the banner always reflects where the market is right now.
+    drawdown: Math.round((isOngoing ? currentPct : drawdownPct) * 10) / 10,
     durationDays: duration,
     recoveryDays: null,
     description,
