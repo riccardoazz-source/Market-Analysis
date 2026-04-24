@@ -1,6 +1,6 @@
 import { Suspense } from 'react'
 import { fetchMarketData } from '@/lib/sp500'
-import { DOWNTURNS, computeStats, detectOngoingDownturn } from '@/lib/downturns'
+import { DOWNTURNS, computeStats, detectAllCrises, mergeWithDetected } from '@/lib/downturns'
 import { getEcoDataAsync } from '@/lib/economics'
 import Dashboard from '@/components/Dashboard'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -19,9 +19,11 @@ export default async function Home() {
   const currentFedRate = liveFedData[liveFedData.length - 1]?.value
   const currentCape    = liveCapeData[liveCapeData.length - 1]?.value
 
-  const ongoingDownturn = detectOngoingDownturn(marketData, currentFedRate, currentCape)
-  const allDownturns    = ongoingDownturn ? [...DOWNTURNS, ongoingDownturn] : DOWNTURNS
-  const stats           = computeStats(allDownturns)
+  // Scan the full history for every peak→recovery cycle (multi-phase = one event),
+  // then merge with the curated list (curated wins on any date-range overlap).
+  const detected     = detectAllCrises(marketData, -5, currentFedRate, currentCape)
+  const allDownturns = mergeWithDetected(DOWNTURNS, detected)
+  const stats        = computeStats(allDownturns)
 
   // Fetch remaining eco data (reuse already-fetched Fed and CAPE)
   const [inflationData, oilData, gdpData] = await Promise.all([

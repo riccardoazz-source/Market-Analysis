@@ -429,93 +429,134 @@ export const DOWNTURNS: Downturn[] = [
 ]
 
 /**
- * Auto-detects any ongoing or recent downturn not covered by the curated list.
- * Pass currentFedRate and currentCape to enrich the description with macro context.
+ * Auto-detects EVERY peak→trough→recovery cycle in the full price history.
+ * A "crisis" is defined as a continuous period from an all-time-high peak
+ * until the market recovers above that peak — so multi-phase drawdowns
+ * (e.g. -5%, +3%, -10%, +3%, -15%, recover) are treated as ONE event,
+ * not fragmented into multiple crises.
+ *
+ * Returns an array ordered by date. The last entry may be ongoing
+ * (recoveryDate === null).
  */
+export function detectAllCrises(
+  data: DataPoint[],
+  threshold: number = -5,
+  currentFedRate?: number,
+  currentCape?: number,
+): Downturn[] {
+  if (data.length < 3) return []
+
+  const out: Downturn[] = []
+  let peak   = data[0]
+  let trough = data[0]
+  let inDrawdown = false
+  let nextId = 100
+
+  const emit = (
+    peakPt: DataPoint,
+    troughPt: DataPoint,
+    recoveryPt: DataPoint | null,
+    latestPt: DataPoint,
+  ) => {
+    const drawdownPct = ((troughPt.close - peakPt.close) / peakPt.close) * 100
+    if (drawdownPct > threshold) return // not deep enough to count
+    const isOngoing   = recoveryPt === null
+    const currentPct  = ((latestPt.close - peakPt.close) / peakPt.close) * 100
+    const duration    = daysBetween(peakPt.date, troughPt.date)
+    const recoveryDays = recoveryPt ? daysBetween(troughPt.date, recoveryPt.date) : null
+    const eventType   = drawdownPct < -20 ? 'bear_market' : 'correction'
+    const typeLabel   = drawdownPct < -20 ? 'Bear Market' : 'Correction'
+    const name = isOngoing
+      ? `Ongoing ${typeLabel}`
+      : `${formatDateShort(peakPt.date)} Auto-detected ${typeLabel}`
+
+    const cats: DownturnCategory[] = []
+    if (isOngoing && currentFedRate !== undefined && currentFedRate > 2.5) cats.push('inflation_rates')
+    if (isOngoing && currentCape    !== undefined && currentCape    > 25)  cats.push('market_structure')
+    if (drawdownPct < -20) cats.push('credit_crisis')
+
+    const macroCtx: string[] = []
+    if (isOngoing && currentFedRate !== undefined) macroCtx.push(`Fed rate: ${currentFedRate.toFixed(2)}%`)
+    if (isOngoing && currentCape    !== undefined) macroCtx.push(`CAPE P/E: ${currentCape.toFixed(1)}x${currentCape > 30 ? ' (elevated)' : ''}`)
+    const macroSuffix = macroCtx.length ? ` Current macro — ${macroCtx.join(' · ')}.` : ''
+
+    const description = isOngoing
+      ? `The S&P 500 is currently ${Math.abs(currentPct).toFixed(1)}% below its recent peak of ${peakPt.close.toLocaleString()} reached on ${formatDateShort(peakPt.date)} (latest close: ${latestPt.close.toLocaleString()}). Max drawdown so far: ${Math.abs(drawdownPct).toFixed(1)}% on ${formatDateShort(troughPt.date)}.${macroSuffix} Full root-cause analysis will be added once the event concludes.`
+      : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peakPt.close.toLocaleString()} (${formatDateShort(peakPt.date)}) to ${troughPt.close.toLocaleString()} (${formatDateShort(troughPt.date)}) over ${duration} days. Recovered to ${recoveryPt?.close.toLocaleString()} on ${formatDateShort(recoveryPt?.date ?? '')}.`
+
+    out.push({
+      id: nextId++,
+      name,
+      startDate: peakPt.date,
+      endDate: troughPt.date,
+      recoveryDate: recoveryPt?.date ?? null,
+      peakValue: peakPt.close,
+      troughValue: troughPt.close,
+      drawdown: Math.round((isOngoing ? currentPct : drawdownPct) * 10) / 10,
+      durationDays: duration,
+      recoveryDays,
+      description,
+      cause: isOngoing
+        ? 'Cause analysis pending — auto-detected from live market data.'
+        : 'Auto-detected from price history — no curated cause analysis available.',
+      type: eventType,
+      tags: ['auto-detected', isOngoing ? 'ongoing' : 'recovered'],
+      categories: cats,
+      isOngoing,
+      isAutoDetected: true,
+    })
+  }
+
+  for (let i = 1; i < data.length; i++) {
+    const pt = data[i]
+    if (pt.close > peak.close) {
+      // New ATH — if we were in a drawdown, this is the recovery point
+      if (inDrawdown) {
+        emit(peak, trough, pt, pt)
+        inDrawdown = false
+      }
+      peak = pt
+      trough = pt
+    } else {
+      if (pt.close < trough.close) trough = pt
+      const drawdownPct = ((pt.close - peak.close) / peak.close) * 100
+      if (!inDrawdown && drawdownPct <= threshold) inDrawdown = true
+    }
+  }
+
+  // Ended while still below a prior peak — emit as ongoing
+  if (inDrawdown) emit(peak, trough, null, data[data.length - 1])
+
+  return out
+}
+
+/**
+ * Merges the curated DOWNTURNS list with auto-detected crises.
+ * Auto-detected entries that overlap a curated event (by date range)
+ * are dropped — curated metadata wins. Anything else is appended, so
+ * events like the recent Iran-war correction get persisted automatically.
+ */
+export function mergeWithDetected(
+  curated: Downturn[],
+  detected: Downturn[],
+): Downturn[] {
+  const rangesOverlap = (a: Downturn, b: Downturn) => {
+    const aEnd = a.recoveryDate ?? a.endDate
+    const bEnd = b.recoveryDate ?? b.endDate
+    return a.startDate <= bEnd && b.startDate <= aEnd
+  }
+  const extras = detected.filter((d) => !curated.some((c) => rangesOverlap(c, d)))
+  return [...curated, ...extras].sort((a, b) => a.startDate.localeCompare(b.startDate))
+}
+
+/** @deprecated Use detectAllCrises + mergeWithDetected instead */
 export function detectOngoingDownturn(
   data: DataPoint[],
   currentFedRate?: number,
   currentCape?: number,
 ): Downturn | null {
-  if (data.length < 6) return null
-
-  const lastCurated = DOWNTURNS[DOWNTURNS.length - 1]
-  const cutoffDate  = lastCurated.recoveryDate ?? lastCurated.endDate
-  const recent      = data.filter((d) => d.date >= cutoffDate)
-  if (recent.length < 3) return null
-
-  // Find the peak since recovery
-  let peak = recent[0]
-  for (const p of recent) {
-    if (p.close > peak.close) peak = p
-  }
-
-  // Find the trough after the peak
-  const afterPeak = recent.filter((d) => d.date >= peak.date)
-  if (afterPeak.length < 2) return null
-
-  let trough = afterPeak[0]
-  for (const p of afterPeak) {
-    if (p.close < trough.close) trough = p
-  }
-
-  const drawdownPct = ((trough.close - peak.close) / peak.close) * 100
-  if (drawdownPct > -5) return null
-
-  const latest     = recent[recent.length - 1]
-  const currentPct = ((latest.close - peak.close) / peak.close) * 100
-  const isOngoing  = latest.date === trough.date || currentPct < -4
-
-  const duration  = daysBetween(peak.date, trough.date)
-  const eventType = drawdownPct < -20 ? 'bear_market' : 'correction'
-  const typeLabel = drawdownPct < -20 ? 'Bear Market' : 'Correction'
-  const name      = isOngoing
-    ? `Ongoing ${typeLabel}`
-    : `${formatDateShort(peak.date)} Auto-detected ${typeLabel}`
-
-  // Signal-based category inference from actual market/macro data (no year heuristics)
-  // Thresholds are calibrated to current macro norms: neutral Fed ~2.5%, hist CAPE avg ~15.9x
-  const uniqueCats: DownturnCategory[] = []
-  if (currentFedRate !== undefined && currentFedRate > 2.5) uniqueCats.push('inflation_rates')
-  if (currentCape    !== undefined && currentCape    > 25)  uniqueCats.push('market_structure')
-  if (drawdownPct < -20)                                     uniqueCats.push('credit_crisis')
-
-  // Macro context snippet for description
-  const macroContext: string[] = []
-  if (currentFedRate !== undefined)
-    macroContext.push(`Fed rate: ${currentFedRate.toFixed(2)}%`)
-  if (currentCape !== undefined)
-    macroContext.push(`CAPE P/E: ${currentCape.toFixed(1)}x${currentCape > 30 ? ' (elevated)' : ''}`)
-
-  const macroSuffix = macroContext.length > 0
-    ? ` Current macro conditions — ${macroContext.join(' · ')}.`
-    : ''
-
-  const description = isOngoing
-    ? `The S&P 500 is currently ${Math.abs(currentPct).toFixed(1)}% below its recent peak of ${peak.close.toLocaleString()} reached on ${formatDateShort(peak.date)} (latest close: ${latest.close.toLocaleString()}). Max drawdown so far: ${Math.abs(drawdownPct).toFixed(1)}% on ${formatDateShort(trough.date)}.${macroSuffix} Full root-cause analysis will be added once the event concludes.`
-    : `The S&P 500 fell ${Math.abs(drawdownPct).toFixed(1)}% from ${peak.close.toLocaleString()} (${formatDateShort(peak.date)}) to ${trough.close.toLocaleString()} (${formatDateShort(trough.date)}) over ${duration} days. Recovery is underway.${macroSuffix}`
-
-  return {
-    id: 99,
-    name,
-    startDate: peak.date,
-    endDate: trough.date,
-    recoveryDate: null,
-    peakValue: peak.close,
-    troughValue: trough.close,
-    // For ongoing events: show current position vs peak (not the worst trough),
-    // so the banner always reflects where the market is right now.
-    drawdown: Math.round((isOngoing ? currentPct : drawdownPct) * 10) / 10,
-    durationDays: duration,
-    recoveryDays: null,
-    description,
-    cause: 'Cause analysis pending — auto-detected from live market data.',
-    type: eventType,
-    tags: ['auto-detected', isOngoing ? 'ongoing' : 'recent'],
-    categories: uniqueCats,
-    isOngoing,
-    isAutoDetected: true,
-  }
+  const all = detectAllCrises(data, -5, currentFedRate, currentCape)
+  return all.find((c) => c.isOngoing) ?? null
 }
 
 function median(arr: number[]): number {
