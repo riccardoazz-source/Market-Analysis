@@ -107,7 +107,9 @@ const _cached = unstable_cache(_generate, ['crisis-ai-v2'], { revalidate: 86400 
  * Enriches a completed auto-detected crisis with AI-generated metadata.
  * Extracts only scalar values before caching to avoid unstable_cache
  * serialisation issues with large EcoPoint arrays.
- * No-ops for curated, ongoing, or when ANTHROPIC_API_KEY is absent.
+ * Skips during Vercel build (SSG) to prevent build timeouts — AI
+ * enrichment only runs at ISR revalidation time.
+ * No-ops for curated, ongoing, missing API key, or any error.
  */
 export async function enrichCrisis(
   downturn: Downturn,
@@ -116,27 +118,35 @@ export async function enrichCrisis(
   capeData: EcoPoint[],
   oilData:  EcoPoint[],
 ): Promise<Downturn> {
-  if (!downturn.isAutoDetected)          return downturn
-  if (downturn.isOngoing)                return downturn
-  if (!process.env.ANTHROPIC_API_KEY)    return downturn
+  if (!downturn.isAutoDetected)       return downturn
+  if (downturn.isOngoing)             return downturn
+  if (!process.env.ANTHROPIC_API_KEY) return downturn
+  // Skip AI during Vercel's production build to avoid 60s build timeouts.
+  // Descriptions are generated at runtime on the first ISR revalidation.
+  if (process.env.NEXT_PHASE === 'phase-production-build') return downturn
 
-  // Extract scalars here — arrays never enter the cache layer
-  const ctx: CrisisContext = {
-    peakDate:     downturn.startDate,
-    troughDate:   downturn.endDate,
-    recoveryDate: downturn.recoveryDate,
-    peakValue:    downturn.peakValue,
-    troughValue:  downturn.troughValue,
-    drawdownPct:  downturn.drawdown,
-    durationDays: downturn.durationDays,
-    recoveryDays: downturn.recoveryDays,
-    fedAtPeak:    valueAtDate(fedData,  downturn.startDate),
-    cpiAtPeak:    valueAtDate(cpiData,  downturn.startDate),
-    capeAtPeak:   valueAtDate(capeData, downturn.startDate),
-    oilChgPct:    changePct(oilData, downturn.startDate, downturn.endDate),
+  try {
+    // Extract scalars here — arrays never enter the cache layer
+    const ctx: CrisisContext = {
+      peakDate:     downturn.startDate,
+      troughDate:   downturn.endDate,
+      recoveryDate: downturn.recoveryDate,
+      peakValue:    downturn.peakValue,
+      troughValue:  downturn.troughValue,
+      drawdownPct:  downturn.drawdown,
+      durationDays: downturn.durationDays,
+      recoveryDays: downturn.recoveryDays,
+      fedAtPeak:    valueAtDate(fedData,  downturn.startDate),
+      cpiAtPeak:    valueAtDate(cpiData,  downturn.startDate),
+      capeAtPeak:   valueAtDate(capeData, downturn.startDate),
+      oilChgPct:    changePct(oilData, downturn.startDate, downturn.endDate),
+    }
+
+    const cacheKey = `${downturn.startDate}|${downturn.endDate}`
+    const patch    = await _cached(cacheKey, ctx)
+    return { ...downturn, ...patch }
+  } catch {
+    // Anything goes wrong (network, SDK init, cache layer) — return original
+    return downturn
   }
-
-  const cacheKey = `${downturn.startDate}|${downturn.endDate}`
-  const patch    = await _cached(cacheKey, ctx)
-  return { ...downturn, ...patch }
 }
