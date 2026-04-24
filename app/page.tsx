@@ -2,6 +2,7 @@ import { Suspense } from 'react'
 import { fetchMarketData } from '@/lib/sp500'
 import { DOWNTURNS, computeStats, detectAllCrises, mergeWithDetected } from '@/lib/downturns'
 import { getEcoDataAsync } from '@/lib/economics'
+import { enrichCrisis } from '@/lib/crisis-description'
 import Dashboard from '@/components/Dashboard'
 import ThemeToggle from '@/components/ThemeToggle'
 import { EcoIndicator } from '@/lib/types'
@@ -9,28 +10,34 @@ import { EcoIndicator } from '@/lib/types'
 export const revalidate = 3600
 
 export default async function Home() {
-  const marketData = await fetchMarketData()
-
-  // Fetch live Fed rate + CAPE first so auto-detection uses real-time macro context
-  const [liveFedData, liveCapeData] = await Promise.all([
+  // Fetch market data + all eco indicators in parallel
+  const [
+    marketData,
+    liveFedData, liveCapeData, inflationData, oilData, gdpData,
+  ] = await Promise.all([
+    fetchMarketData(),
     getEcoDataAsync('fed_rate'),
     getEcoDataAsync('pe_ratio'),
-  ])
-  const currentFedRate = liveFedData[liveFedData.length - 1]?.value
-  const currentCape    = liveCapeData[liveCapeData.length - 1]?.value
-
-  // Scan the full history for every peak→recovery cycle (multi-phase = one event),
-  // then merge with the curated list (curated wins on any date-range overlap).
-  const detected     = detectAllCrises(marketData, -5, currentFedRate, currentCape)
-  const allDownturns = mergeWithDetected(DOWNTURNS, detected)
-  const stats        = computeStats(allDownturns)
-
-  // Fetch remaining eco data (reuse already-fetched Fed and CAPE)
-  const [inflationData, oilData, gdpData] = await Promise.all([
     getEcoDataAsync('inflation_cpi'),
     getEcoDataAsync('oil_price'),
     getEcoDataAsync('real_gdp'),
   ])
+
+  const currentFedRate = liveFedData[liveFedData.length - 1]?.value
+  const currentCape    = liveCapeData[liveCapeData.length - 1]?.value
+
+  // Detect all peak→recovery cycles, merge with curated list
+  const detected     = detectAllCrises(marketData, -5, currentFedRate, currentCape)
+  const merged       = mergeWithDetected(DOWNTURNS, detected)
+
+  // Enrich auto-detected completed crises with AI-generated root cause analysis.
+  // Results are cached 7 days per crisis; no-ops if ANTHROPIC_API_KEY is unset.
+  const allDownturns = await Promise.all(
+    merged.map((d) => enrichCrisis(d, liveFedData, inflationData, liveCapeData, oilData))
+  )
+
+  const stats = computeStats(allDownturns)
+
   const ecoData: Record<EcoIndicator, Awaited<ReturnType<typeof getEcoDataAsync>>> = {
     fed_rate:      liveFedData,
     pe_ratio:      liveCapeData,
